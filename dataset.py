@@ -3,6 +3,7 @@ import random
 import numpy as np
 
 from cachier import cachier
+from transformers import AutoTokenizer
 
 import pre_processing
 import utils
@@ -39,6 +40,8 @@ NIQQUD_SIZE = len(niqqud_table)
 DAGESH_SIZE = len(dagesh_table)
 SIN_SIZE = len(sin_table)
 
+tokenize = AutoTokenizer.from_pretrained("tau/tavbert-he")
+
 
 def print_tables():
     print('const ALL_TOKENS =', letters_table.chars, end=';\n')
@@ -69,6 +72,8 @@ def merge(texts, tnss, nss, dss, sss):
     return res
 
 
+
+
 class Data:
     text: np.ndarray = None
     normalized: np.ndarray = None
@@ -87,7 +92,7 @@ class Data:
         """
         self = Data()
         self.text = np.concatenate([x.text for x in others])
-        self.normalized = np.concatenate([x.normalized for x in others])
+        self.normalized = np.concatenate([x.normalized for x in others],dtype=object)
         self.dagesh = np.concatenate([x.dagesh for x in others])
         self.sin = np.concatenate([x.sin for x in others])
         self.niqqud = np.concatenate([x.niqqud for x in others])
@@ -115,11 +120,11 @@ class Data:
         def pad(ords, dtype='int32', value=0):
             return utils.pad_sequences(ords, maxlen=maxlen, dtype=dtype, value=value)
 
-        self.normalized = pad(letters_table.to_ids(normalized))
-        self.dagesh = pad(dagesh_table.to_ids(dagesh))
-        self.sin = pad(sin_table.to_ids(sin))
-        self.niqqud = pad(niqqud_table.to_ids(niqqud))
-        self.text = pad(text, dtype='<U1', value=0)
+        self.normalized = tuple("".join(x) for x in normalized)
+        self.dagesh = dagesh_table.to_ids(dagesh)
+        self.sin = sin_table.to_ids(sin)
+        self.niqqud = niqqud_table.to_ids(niqqud)
+        self.text = text
         return self
 
     def __len__(self):
@@ -153,8 +158,8 @@ if __name__ == '__main__':
     # res = merge(data.text[:1], data.normalized[:1], data.niqqud[:1], data.dagesh[:1], data.sin[:1])
     # print(res)
     train_dict = {}
-    train_dict["test"] = get_xy(load_data(tuple(['test1.txt']), maxlen=64).shuffle())
+    train_dict["test"] = get_xy(load_data(tuple(['test1.txt']), maxlen=16).shuffle())
     print_tables()
     print(letters_table.to_ids(["שלום"]))
 
-# load_data.clear_cache()
+load_data.clear_cache()
