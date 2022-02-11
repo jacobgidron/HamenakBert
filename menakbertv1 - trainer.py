@@ -1,12 +1,14 @@
 import torch
 from torch import nn
-from transformers import AutoTokenizer, AutoModel, TrainingArguments , Trainer
-from dataset import get_xy, load_data
+from transformers import AutoTokenizer, AutoModel, TrainingArguments, Trainer
+from dataset import textDataset
 from torch import nn
 
 NIKUD_NUM = 16
 SHIN_NUM = 3
 DAGESH_NUM = 2
+MAX_LEN = 100
+tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
 
 class MenakBert(torch.nn.Module):
@@ -21,10 +23,10 @@ class MenakBert(torch.nn.Module):
         self.linear_S = nn.Linear(768, SHIN_NUM)
         self.linear_N = nn.Linear(768, NIKUD_NUM)
 
-    def forward(self, x):
-        return self.linear_N(self.model(x)['last_hidden_state'])\
-            ,self.linear_D(self.model(x)['last_hidden_state'])\
-            ,self.linear_S(self.model(x)['last_hidden_state'])
+    def forward(self, x, y1):
+        return self.linear_N(self.model(x)['last_hidden_state']) \
+            , self.linear_D(self.model(x)['last_hidden_state']) \
+            , self.linear_S(self.model(x)['last_hidden_state'])
 
 
 # def tokenize_function(example):
@@ -61,27 +63,47 @@ class MenakBert(torch.nn.Module):
 #                                   evaluation_strategy="epoch")
 #
 
+from dataclasses import dataclass
+
+
+@dataclass
+class DataCollatorWithPadding:
+
+    def __call__(self, features):
+        batch = tokenizer([x.get("text") for x in features],  padding='max_length', max_length=MAX_LEN, return_tensors="pt")
+        features_dict = {}
+        features_dict["y1"] = {
+            "N": torch.tensor([x.get("y1").get("N") for x in features]).long(),
+            "D": torch.tensor([x.get("y1").get("D") for x in features]).long(),
+            "S": torch.tensor([x.get("y1").get("S") for x in features]).long(),
+        }
+        features_dict["x"] = batch.data["input_ids"]
+        # features_dict["tokens"] = [tokenizer.encode(x.get("text"),return_tensors="pt") for x in features]
+
+        # features_dict["input_ids"] = torch.tensor([pad_sequence_to_length(x, max_len) for x in input_ids]).long()
+        # features_dict["attention_masks"] = torch.tensor([pad_sequence_to_length(x, max_len) for x in masks]).long()
+
+        return features_dict
+
 
 class CustomTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
-        labels = inputs.get("labels")
+        labels = inputs.get("y1")
         # forward pass
         outputs = model(**inputs)
-        logits = outputs.get("logits")
+        # outputs = [model(**inputs, x=x) for x in inputs.get("tokens")]
+        logits = outputs
         # compute custom loss (suppose one has 3 labels with different weights)
         loss_fct = nn.CrossEntropyLoss()
-        loss = loss_fct(logits[0], labels["N"])+loss_fct(logits[1], labels["D"])+loss_fct(logits[2], labels["S"])
+        loss = loss_fct(logits[0].permute((0,2,1)), labels["N"]) + loss_fct(logits[1].permute((0,2,1)), labels["D"]) + loss_fct(logits[2].permute((0,2,1)), labels["D"])
         return (loss, outputs) if return_outputs else loss
-
-
-
 
 
 model = MenakBert()
 
 training_args = TrainingArguments("MenakBert",
                                   num_train_epochs=40,
-                                  per_device_train_batch_size=100,
+                                  per_device_train_batch_size=10,
                                   per_device_eval_batch_size=100,
                                   learning_rate=0.01,
                                   save_total_limit=2,
@@ -97,10 +119,14 @@ training_args = TrainingArguments("MenakBert",
 #     labels = eval_pred.label_ids
 #     predictions = np.argmax(logits, axis=-1)
 #     return metric.compute(predictions=predictions, references=labels)
+small_train_dataset = textDataset(tuple(['train1.txt']), MAX_LEN-1)
+small_eval_dataset = textDataset(tuple(['test1.txt']), MAX_LEN-1)
 
-trainer = Trainer(
+co = DataCollatorWithPadding()
+
+trainer = CustomTrainer(
     model=model,
-    # data_collator=co,
+    data_collator=co,
     args=training_args,
     callbacks=[
         # YOUR CODE HERE
@@ -108,11 +134,6 @@ trainer = Trainer(
     ],
     train_dataset=small_train_dataset,
     eval_dataset=small_eval_dataset,
-    compute_metrics=compute_metrics,
+    # compute_metrics=compute_metrics,
 )
 trainer.train()
-
-tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
-train_dict = {}
-train_dict["test"] = get_xy(load_data(tuple(['test1.txt']), maxlen=64).shuffle())
-train_dict["train"] = get_xy(load_data(tuple(['train1.txt']), maxlen=64).shuffle())
