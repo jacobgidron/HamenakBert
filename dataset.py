@@ -89,14 +89,20 @@ class textDataset(Dataset):
         """
         Args:
         """
+
+        def pad(ords, dtype='int32', value=0):
+            return utils.pad_sequences(ords, maxlen=maxlen+1, dtype=dtype, value=value)
+
         self.data = []
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
             text, normalized, dagesh, sin, niqqud = zip(
                 *(zip(*line) for line in pre_processing.split_by_length(heb_items, maxlen)))
-            niqqud = niqqud_table.to_ids(niqqud)
-            dagesh = dagesh_table.to_ids(dagesh)
-            sin = sin_table.to_ids(sin)
+
+
+            niqqud = pad(niqqud_table.to_ids(niqqud))
+            dagesh = pad(dagesh_table.to_ids(dagesh))
+            sin = pad(sin_table.to_ids(sin))
 
             for i in range(len(text)):
                 item = {
