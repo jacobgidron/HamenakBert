@@ -235,3 +235,17 @@ def split_by_length(characters: Iterable, maxlen: int):
             out = out[space + 1:]
     if out:
         yield out
+
+def split_by_sentence(characters: Iterable):
+    out = []
+    for c in characters:
+        if len(out) == 0 and is_space(c):
+            continue
+
+        if c == '.':
+            yield out
+            out = []
+        out.append(c)
+
+    if out:
+        yield out
