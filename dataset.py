@@ -43,6 +43,17 @@ SIN_SIZE = len(sin_table)
 
 tokenize = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
+nikud_to_id_dict = {}
+id_to_nikud_dict = {}
+
+count = 0
+for niqqud in range(NIQQUD_SIZE ):
+    for sin in range(SIN_SIZE):
+        for dag in range(DAGESH_SIZE):
+            nikud_to_id_dict[(niqqud, dag, sin)] = count
+            id_to_nikud_dict[count] = (niqqud, sin, dag)
+            count += 1
+
 
 def print_tables():
     print('const ALL_TOKENS =', letters_table.chars, end=';\n')
@@ -91,6 +102,7 @@ class textDataset(Dataset):
                 item = {
                     "text": "".join(normalized[i]),
                     "y1": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
+                    "y2": [nikud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))]
                 }
                 self.data.append(item)
 
