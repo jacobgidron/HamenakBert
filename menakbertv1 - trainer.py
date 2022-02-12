@@ -5,8 +5,8 @@ from dataset import textDataset
 from torch import nn
 
 NIKUD_NUM = 16
-SHIN_NUM = 3
-DAGESH_NUM = 2
+SHIN_NUM = 4
+DAGESH_NUM = 3
 MAX_LEN = 100
 tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
@@ -70,7 +70,8 @@ from dataclasses import dataclass
 class DataCollatorWithPadding:
 
     def __call__(self, features):
-        batch = tokenizer([x.get("text") for x in features],  padding='max_length', max_length=MAX_LEN, return_tensors="pt")
+        batch = tokenizer([x.get("text") for x in features], padding='max_length', max_length=MAX_LEN,
+                          return_tensors="pt")
         features_dict = {}
         features_dict["y1"] = {
             "N": torch.tensor([x.get("y1").get("N") for x in features]).long(),
@@ -94,18 +95,22 @@ class CustomTrainer(Trainer):
         # outputs = [model(**inputs, x=x) for x in inputs.get("tokens")]
         logits = outputs
         # compute custom loss (suppose one has 3 labels with different weights)
-        loss_fct = nn.CrossEntropyLoss()
-        loss = loss_fct(logits[0].permute((0,2,1)), labels["N"]) + loss_fct(logits[1].permute((0,2,1)), labels["D"]) + loss_fct(logits[2].permute((0,2,1)), labels["D"])
+        loss_fct1 = nn.CrossEntropyLoss()
+        loss_fct2 = nn.CrossEntropyLoss()
+        loss_fct3 = nn.CrossEntropyLoss()
+        loss = loss_fct1(logits[0].permute((0, 2, 1)), labels["N"]) + loss_fct2(logits[1].permute((0, 2, 1)),
+                                                                                labels["D"]) + loss_fct3(
+            logits[2].permute((0, 2, 1)), labels["D"])
         return (loss, outputs) if return_outputs else loss
 
 
 model = MenakBert()
 
 training_args = TrainingArguments("MenakBert",
-                                  num_train_epochs=40,
+                                  num_train_epochs=5,
                                   per_device_train_batch_size=10,
-                                  per_device_eval_batch_size=100,
-                                  learning_rate=0.01,
+                                  per_device_eval_batch_size=10,
+                                  learning_rate=0.5,
                                   save_total_limit=2,
                                   log_level="error",
                                   evaluation_strategy="epoch")
@@ -119,8 +124,8 @@ training_args = TrainingArguments("MenakBert",
 #     labels = eval_pred.label_ids
 #     predictions = np.argmax(logits, axis=-1)
 #     return metric.compute(predictions=predictions, references=labels)
-small_train_dataset = textDataset(tuple(['train1.txt']), MAX_LEN-1)
-small_eval_dataset = textDataset(tuple(['test1.txt']), MAX_LEN-1)
+small_train_dataset = textDataset(tuple(['train1.txt']), MAX_LEN - 1)
+small_eval_dataset = textDataset(tuple(['test1.txt']), MAX_LEN - 1)
 
 co = DataCollatorWithPadding()
 
