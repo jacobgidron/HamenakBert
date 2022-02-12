@@ -27,6 +27,9 @@ class CharacterTable:
             [self.char_indices[c] for c in cs] for cs in css
         ]
 
+    def to_niqud(self, cs):
+        return [self.indices_char[c] for c in cs]
+
     def __repr__(self):
         return repr(self.chars)
 

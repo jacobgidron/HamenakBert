@@ -10,6 +10,8 @@ DAGESH_NUM = 3
 MAX_LEN = 100
 tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class MenakBert(torch.nn.Module):
     """
@@ -74,9 +76,9 @@ class DataCollatorWithPadding:
                           return_tensors="pt")
         features_dict = {}
         features_dict["y1"] = {
-            "N": torch.tensor([x.get("y1").get("N") for x in features]).long(),
-            "D": torch.tensor([x.get("y1").get("D") for x in features]).long(),
-            "S": torch.tensor([x.get("y1").get("S") for x in features]).long(),
+            "N": torch.tensor([x.get("y1").get("N") for x in features], device=device).long(),
+            "D": torch.tensor([x.get("y1").get("D") for x in features], device=device).long(),
+            "S": torch.tensor([x.get("y1").get("S") for x in features], device=device).long(),
         }
         features_dict["x"] = batch.data["input_ids"]
         # features_dict["tokens"] = [tokenizer.encode(x.get("text"),return_tensors="pt") for x in features]
