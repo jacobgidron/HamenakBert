@@ -10,6 +10,8 @@ DAGESH_NUM = 2
 MAX_LEN = 100
 tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class MenakBert(torch.nn.Module):
     """
@@ -70,12 +72,13 @@ from dataclasses import dataclass
 class DataCollatorWithPadding:
 
     def __call__(self, features):
-        batch = tokenizer([x.get("text") for x in features],  padding='max_length', max_length=MAX_LEN, return_tensors="pt")
+        batch = tokenizer([x.get("text") for x in features], padding='max_length', max_length=MAX_LEN,
+                          return_tensors="pt")
         features_dict = {}
         features_dict["y1"] = {
-            "N": torch.tensor([x.get("y1").get("N") for x in features]).long(),
-            "D": torch.tensor([x.get("y1").get("D") for x in features]).long(),
-            "S": torch.tensor([x.get("y1").get("S") for x in features]).long(),
+            "N": torch.tensor([x.get("y1").get("N") for x in features], device=device).long(),
+            "D": torch.tensor([x.get("y1").get("D") for x in features], device=device).long(),
+            "S": torch.tensor([x.get("y1").get("S") for x in features], device=device).long(),
         }
         features_dict["x"] = batch.data["input_ids"]
         # features_dict["tokens"] = [tokenizer.encode(x.get("text"),return_tensors="pt") for x in features]
@@ -95,7 +98,9 @@ class CustomTrainer(Trainer):
         logits = outputs
         # compute custom loss (suppose one has 3 labels with different weights)
         loss_fct = nn.CrossEntropyLoss()
-        loss = loss_fct(logits[0].permute((0,2,1)), labels["N"]) + loss_fct(logits[1].permute((0,2,1)), labels["D"]) + loss_fct(logits[2].permute((0,2,1)), labels["D"])
+        loss = loss_fct(logits[0].permute((0, 2, 1)), labels["N"]) + loss_fct(logits[1].permute((0, 2, 1)),
+                                                                              labels["D"]) + loss_fct(
+            logits[2].permute((0, 2, 1)), labels["D"])
         return (loss, outputs) if return_outputs else loss
 
 
@@ -119,8 +124,8 @@ training_args = TrainingArguments("MenakBert",
 #     labels = eval_pred.label_ids
 #     predictions = np.argmax(logits, axis=-1)
 #     return metric.compute(predictions=predictions, references=labels)
-small_train_dataset = textDataset(tuple(['train1.txt']), MAX_LEN-1)
-small_eval_dataset = textDataset(tuple(['test1.txt']), MAX_LEN-1)
+small_train_dataset = textDataset(tuple(['train1.txt']), MAX_LEN - 1)
+small_eval_dataset = textDataset(tuple(['test1.txt']), MAX_LEN - 1)
 
 co = DataCollatorWithPadding()
 
