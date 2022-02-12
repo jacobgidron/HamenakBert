@@ -1,12 +1,9 @@
 import torch
 from torch import nn
 from transformers import AutoTokenizer, AutoModel, TrainingArguments, Trainer
-from dataset import textDataset
+from dataset import textDataset, NIQQUD_SIZE, DAGESH_SIZE, SIN_SIZE
 from torch import nn
 
-NIKUD_NUM = 16
-SHIN_NUM = 4
-DAGESH_NUM = 3
 MAX_LEN = 100
 tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
@@ -21,9 +18,9 @@ class MenakBert(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.model = AutoModel.from_pretrained("tau/tavbert-he")
-        self.linear_D = nn.Linear(768, DAGESH_NUM)
-        self.linear_S = nn.Linear(768, SHIN_NUM)
-        self.linear_N = nn.Linear(768, NIKUD_NUM)
+        self.linear_D = nn.Linear(768, DAGESH_SIZE)
+        self.linear_S = nn.Linear(768, SIN_SIZE)
+        self.linear_N = nn.Linear(768, NIQQUD_SIZE)
 
     def forward(self, x, y1):
         return self.linear_N(self.model(x)['last_hidden_state']) \
@@ -76,9 +73,9 @@ class DataCollatorWithPadding:
                           return_tensors="pt")
         features_dict = {}
         features_dict["y1"] = {
-            "N": torch.tensor([x.get("y1").get("N") for x in features], device=device).long(),
-            "D": torch.tensor([x.get("y1").get("D") for x in features], device=device).long(),
-            "S": torch.tensor([x.get("y1").get("S") for x in features], device=device).long(),
+            "N": torch.tensor([x.get("y1").get("N") for x in features]).long(),
+            "D": torch.tensor([x.get("y1").get("D") for x in features]).long(),
+            "S": torch.tensor([x.get("y1").get("S") for x in features]).long(),
         }
         features_dict["x"] = batch.data["input_ids"]
         # features_dict["tokens"] = [tokenizer.encode(x.get("text"),return_tensors="pt") for x in features]
