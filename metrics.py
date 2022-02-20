@@ -3,6 +3,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import numpy as np
 
+import dataset
 import pre_processing
 
 
@@ -213,11 +214,22 @@ def all_failed():
             print(f'{doc_pack.source}|{doc_pack.name}| {pre}|{res}|{post} |')
 
 
-def format_output(text, niqqud, dagesh, sin) -> str:
+def format_output_y1(text, niqqud, dagesh, sin) -> str:
     output = ''
     for x in text, niqqud, dagesh, sin:
-        output = output.join(x)
+        diacritization = ''.join(x)
+        output = ''.join((output, diacritization))
     return output.replace(pre_processing.RAFE, '')
+
+
+def format_output_y2(text, y2) -> str:
+    output = ''
+    for letter, id in zip(text, y2):
+        diacritization = ''.join(dataset.id_to_nikud_dict[id])
+        output = ''.join((output, diacritization))
+    return output
+
+
 
 
 if __name__ == '__main__':
