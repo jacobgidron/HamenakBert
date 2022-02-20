@@ -2,7 +2,6 @@ from typing import Tuple, List
 import random
 import numpy as np
 
-from cachier import cachier
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
@@ -49,13 +48,13 @@ tokenize = AutoTokenizer.from_pretrained("tau/tavbert-he")
 nikud_to_id_dict = {}
 id_to_nikud_dict = {}
 
-count = 0
+Y2_SIZE = 0
 for niqqud in range(NIQQUD_SIZE ):
     for sin in range(SIN_SIZE):
         for dag in range(DAGESH_SIZE):
-            nikud_to_id_dict[(niqqud, dag, sin)] = count
-            id_to_nikud_dict[count] = (niqqud, sin, dag)
-            count += 1
+            nikud_to_id_dict[(niqqud, dag, sin)] = Y2_SIZE
+            id_to_nikud_dict[Y2_SIZE] = (niqqud, sin, dag)
+            Y2_SIZE += 1
 
 
 def print_tables():
@@ -128,14 +127,14 @@ def read_corpora(base_paths):
 
 
 if __name__ == '__main__':
-    # data = Data.concatenate([Data.from_text(x, maxlen=64) for x in read_corpora(['test1.txt'])])
+    # data = Data.concatenate([Data.from_text(x, maxlen=64) for x in read_corpora(['train1.txt'])])
     # data.print_stats()
     # print(np.concatenate([data.normalized[:1], data.sin[:1]]))
     # res = merge(data.text[:1], data.normalized[:1], data.niqqud[:1], data.dagesh[:1], data.sin[:1])
     # print(res)
     # train_dict = {}
-    # train_dict["test"] = get_xy(load_data(tuple(['test1.txt', 'test2.txt']), maxlen=16).shuffle())
-    testData = textDataset(tuple(['test1.txt', 'test2.txt']), 16)
+    # train_dict["test"] = get_xy(load_data(tuple(['train1.txt', 'train2.txt']), maxlen=16).shuffle())
+    testData = textDataset(tuple(['train1.txt', 'train2.txt']), 16)
     print_tables()
     print(letters_table.to_ids(["שלום"]))
 
