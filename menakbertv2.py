@@ -24,10 +24,9 @@ class MenakBert(torch.nn.Module):
         self.linear = nn.Linear(768, Y2_SIZE)
         self.loss = nn.CrossEntropyLoss()
 
-    def forward(self, x, y2 ,**kwargs):
+    def forward(self, x, y2=None ,**kwargs):
         res = self.linear(self.model(x)['last_hidden_state'])
-        loss = self.loss(res.permute((0,2,1)), y2)
-
+        loss = self.loss(res.permute((0,2,1)),y2)
         return {"loss":loss,"logits":res}
 
 
@@ -37,11 +36,10 @@ metric = load_metric("accuracy")
 
 
 def compute_metrics(eval_pred):
-    print("hello")
     logits = eval_pred.predictions
     labels = eval_pred.label_ids
     predictions = np.argmax(logits, axis=-1)
-    return metric.compute(predictions=predictions, references=labels)
+    return metric.compute(predictions=predictions.flatten(), references=labels.flatten())
 
 from dataclasses import dataclass
 
@@ -85,16 +83,15 @@ class CustomTrainer(Trainer):
 model = MenakBert()
 
 training_args = TrainingArguments("MenakBertv2",
-                                  num_train_epochs=32,
-                                  per_device_train_batch_size=1,
-                                  per_device_eval_batch_size=1,
+                                  num_train_epochs=5,
+                                  per_device_train_batch_size=10,
+                                  per_device_eval_batch_size=10,
                                   learning_rate=0.05,
-                                  logging_steps=4,
+                                  logging_steps=64,
                                   save_total_limit=32,
                                   log_level="error",
-                                  remove_unused_columns=False,
                                   logging_dir="log",
-                                  evaluation_strategy="steps")
+                                  evaluation_strategy="epoch")
 
 # from datasets import load_metric
 #
