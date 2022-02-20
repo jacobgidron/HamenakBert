@@ -1,5 +1,9 @@
 from typing import NamedTuple, Iterator, Iterable, List
 import re
+from collections import defaultdict, Counter
+import itertools
+import utils
+
 
 # "rafe" denotes a letter to which it would have been valid to add a diacritic of some category
 # but instead it is decided not to. This makes the metrics less biased.
@@ -249,3 +253,85 @@ def split_by_sentence(characters: Iterable):
 
     if out:
         yield out
+
+class Token:
+    items: tuple[HebrewItem]
+
+    def __str__(self):
+        return ''.join(str(c) for c in self.items)
+
+    def __lt__(self, other: 'Token'):
+        return (self.to_undotted(), str(self)) < (other.to_undotted(), str(other))
+
+    def split_on_hebrew(self) -> tuple[str, 'Token', str]:
+        start = 0
+        end = len(self.items) - 1
+        while True:
+            if start >= len(self.items):
+                return ('', Token(()), '')
+            if self.items[start].letter in HEBREW_LETTERS + ANY_NIQQUD:
+                break
+            start += 1
+        while self.items[end].letter not in HEBREW_LETTERS + ANY_NIQQUD:
+            end -= 1
+        return (''.join(c.letter for c in self.items[:start]),
+                Token(self.items[start:end + 1]),
+                ''.join(c.letter for c in self.items[end + 1:]))
+
+    def __bool__(self):
+        return bool(self.items)
+
+    def __eq__(self, other):
+        return self.items == other.items
+
+    # @lru_cache()
+    def to_undotted(self):
+        return ''.join(str(c.letter) for c in self.items)
+
+    def is_undotted(self):
+        return len(self.items) > 1 and all(c.niqqud in [RAFE, ''] for c in self.items)
+
+    def is_definite(self):
+        return len(self.items) > 2 and self.items[0].niqqud == 'הַ'[-1] and self.items[0].letter in 'כבלה'
+
+    def vocalize(self) -> 'Token':
+        return Token(tuple([c.vocalize() for c in self.items]))
+
+
+def tokenize_into(tokens_list: List[Token], char_iterator: Iterator[HebrewItem], strip_nonhebrew: bool) -> Iterator[
+    HebrewItem]:
+    current = []
+    for c in char_iterator:
+        if c.letter.isspace() or c.letter == '-':
+            if current:
+                token = Token(tuple(current))
+                if strip_nonhebrew:
+                    _, token, _ = token.split_on_hebrew()
+                tokens_list.append(token)
+            current = []
+        else:
+            current.append(c)
+        yield c
+    if current:
+        token = Token(tuple(current))
+        if strip_nonhebrew:
+            _, token, _ = token.split_on_hebrew()
+        tokens_list.append(token)
+
+
+def tokenize(iterator: Iterator[HebrewItem], strip_nonhebrew=False) -> List[Token]:
+    tokens = []
+    _ = list(tokenize_into(tokens, iterator, strip_nonhebrew))
+    return tokens
+
+
+def collect_wordmap(tokens: Iterable[Token]):
+    word_dict = defaultdict(Counter)
+    for token in tokens:
+        word_dict[token.to_undotted()][str(token)] += 1
+    return word_dict
+
+
+def collect_tokens(paths: Iterable[str]):
+    return tokenize(itertools.chain.from_iterable(iterate_file(path) for path in utils.iterate_files(paths)),
+                    strip_nonhebrew=True)
