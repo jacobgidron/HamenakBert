@@ -36,6 +36,7 @@ metric = load_metric("accuracy")
 
 
 def compute_metrics(eval_pred):
+    print("hello")
     logits = eval_pred.predictions
     labels = eval_pred.label_ids
     predictions = np.argmax(logits, axis=-1)
@@ -84,9 +85,9 @@ model = MenakBert()
 
 training_args = TrainingArguments("MenakBertv2",
                                   num_train_epochs=5,
-                                  per_device_train_batch_size=10,
-                                  per_device_eval_batch_size=10,
-                                  learning_rate=0.05,
+                                  per_device_train_batch_size=1,
+                                  per_device_eval_batch_size=1,
+                                  learning_rate=0.08,
                                   logging_steps=64,
                                   save_total_limit=32,
                                   log_level="error",

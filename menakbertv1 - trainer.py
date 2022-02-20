@@ -74,7 +74,7 @@ class DataCollatorWithPadding:
             "S": torch.tensor([x.get("y1").get("S") for x in features]).long(),
         }
         features_dict["x"] = batch.data["input_ids"]
-        features_dict["labels"] = features_dict["y1"]
+        # features_dict["labels"] = features_dict["y1"]
         # features_dict["tokens"] = [tokenizer.encode(x.get("text"),return_tensors="pt") for x in features]
 
         # features_dict["input_ids"] = torch.tensor([pad_sequence_to_length(x, max_len) for x in input_ids]).long()
@@ -114,7 +114,7 @@ training_args = TrainingArguments("MenakBert",
                                   save_total_limit=2,
                                   log_level="error",
                                   logging_dir="log",
-                                  eval_steps=20,
+                                  logging_steps=20,
                                   evaluation_strategy="steps")
 
 # from datasets import load_metric
