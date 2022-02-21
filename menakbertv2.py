@@ -103,8 +103,9 @@ training_args = TrainingArguments("MenakBertv2",
 #     labels = eval_pred.label_ids
 #     predictions = np.argmax(logits, axis=-1)
 #     return metric.compute(predictions=predictions, references=labels)
-small_train_dataset = textDataset(tuple(['train1.txt']), MAX_LEN - 1)
-small_eval_dataset = textDataset(tuple(['test1.txt']), MAX_LEN - 1)
+small_train_dataset = textDataset(tuple(['hebrew_diacritized/train']), MAX_LEN - 1)
+small_eval_dataset = textDataset(tuple(['hebrew_diacritized/validation']), MAX_LEN - 1)
+
 
 co = DataCollatorWithPadding()
 

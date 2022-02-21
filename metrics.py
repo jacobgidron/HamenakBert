@@ -225,7 +225,7 @@ def format_output_y1(text, niqqud, dagesh, sin) -> str:
 def format_output_y2(text, y2) -> str:
     output = ''
     for letter, id in zip(text, y2):
-        diacritization = ''.join(dataset.id_to_nikud_dict[id])
+        diacritization = ''.join(dataset.id_to_niqqud_dict[id])
         output = ''.join((output, diacritization))
     return output
 

@@ -1,7 +1,6 @@
 from typing import Tuple, List
 import random
 import numpy as np
-
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
@@ -45,15 +44,19 @@ SIN_SIZE = len(sin_table)
 
 tokenize = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
-nikud_to_id_dict = {}
-id_to_nikud_dict = {}
+# A dictionary that converts a triplet (niqqud, dagesh, sin) into a unique ID for the triplet
+niqqud_to_id_dict = {}
+
+# A dictionary that an ID to a triplet (niqqud, dagesh, sin). The reverse of niqqud_to_id_dict
+id_to_niqqud_dict = {}
+
 
 Y2_SIZE = 0
 for niqqud in range(NIQQUD_SIZE ):
     for sin in range(SIN_SIZE):
         for dag in range(DAGESH_SIZE):
-            nikud_to_id_dict[(niqqud, dag, sin)] = Y2_SIZE
-            id_to_nikud_dict[Y2_SIZE] = (niqqud, sin, dag)
+            niqqud_to_id_dict[(niqqud, dag, sin)] = Y2_SIZE
+            id_to_niqqud_dict[Y2_SIZE] = (niqqud, dag, sin)
             Y2_SIZE += 1
 
 
@@ -106,11 +109,19 @@ class textDataset(Dataset):
             dagesh = pad(dagesh_table.to_ids(dagesh))
             sin = pad(sin_table.to_ids(sin))
 
+            y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
+            for i in range(len(niqqud)):
+                for j in range(len(niqqud[i])):
+                    y3[i][j][niqqud[i][j]] = 1/3
+                    y3[i][j][dagesh[i][j]] = 1/3
+                    y3[i][j][sin[i][j]] = 1/3
+
             for i in range(len(text)):
                 item = {
                     "text": "".join(normalized[i]),
                     "y1": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
-                    "y2": [nikud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))]
+                    "y2": [niqqud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))],
+                    "y3": y3
                 }
                 self.data.append(item)
 
