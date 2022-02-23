@@ -4,7 +4,6 @@ from collections import defaultdict, Counter
 import itertools
 import utils
 
-
 # "rafe" denotes a letter to which it would have been valid to add a diacritic of some category
 # but instead it is decided not to. This makes the metrics less biased.
 RAFE = '\u05BF'
@@ -226,6 +225,7 @@ def is_space(c):
     assert False
 
 
+# Splits text by length, will split the text to as many words it can get up to maxlen chars (will not cut words)
 def split_by_length(characters: Iterable, maxlen: int):
     assert maxlen > 1
     out = []
@@ -240,19 +240,31 @@ def split_by_length(characters: Iterable, maxlen: int):
     if out:
         yield out
 
-def split_by_sentence(characters: Iterable):
+
+# Splits the text by sentence, if the sentence is longer than maxlen it will cut it to the nearest word.
+# If the sentence is shorter than minlen we will drop it out of the dataset.
+def split_by_sentence(characters: Iterable, maxlen: int, minlen: int):
     out = []
+    space = maxlen
+
     for c in characters:
-        if len(out) == 0 and is_space(c):
-            continue
+        if is_space(c):
+            if len(out) == 0:
+                continue
+            space = len(out)
 
-        if c == '.':
-            yield out
-            out = []
         out.append(c)
+        if c.letter == '.':
+            if len(out) > minlen:
+                yield out
+            out = []
+        elif len(out) == maxlen - 1:
+            yield out[:space + 1]
+            out = out[space + 1:]
 
-    if out:
+    if len(out) > minlen:
         yield out
+
 
 class Token:
     items: tuple[HebrewItem]

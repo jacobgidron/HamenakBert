@@ -7,6 +7,7 @@ from transformers import AutoTokenizer
 import pre_processing
 import utils
 
+MIN_LEN = 10
 
 class CharacterTable:
     MASK_TOKEN = ''
@@ -102,7 +103,7 @@ class textDataset(Dataset):
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
             text, normalized, dagesh, sin, niqqud = zip(
-                *(zip(*line) for line in pre_processing.split_by_length(heb_items, maxlen)))
+                *(zip(*line) for line in pre_processing.split_by_sentence(heb_items, maxlen, MIN_LEN)))
 
 
             niqqud = pad(niqqud_table.to_ids(niqqud))
