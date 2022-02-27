@@ -214,10 +214,28 @@ def all_failed():
             print(f'{doc_pack.source}|{doc_pack.name}| {pre}|{res}|{post} |')
 
 
-def format_output_y1(text, niqqud, dagesh, sin) -> str:
+from dataset import niqqud_table, dagesh_table, sin_table
+
+def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin):
+    # find the index where we start padding
+    pad_index = 0
+    for i in range(pad_text.size(dim=0)):
+        pad_index = i
+        if pad_text[i] == 2:
+            break
+
+    # decode unpadded text
+    coded_text = pad_text[1:pad_index]
+    text = dataset.tokenizer.decode(coded_text,clean_up_tokenization_spaces=True)
+
+    # remove padding
+    niqqud = niqqud_table.to_niqud(pad_niqqud[1:pad_index])
+    dagesh = dagesh_table.to_niqud(pad_dagesh[1:pad_index])
+    sin = sin_table.to_niqud(pad_sin[1:pad_index])
+
     output = ''
-    for x in text, niqqud, dagesh, sin:
-        diacritization = ''.join(x)
+    for i in range(len(niqqud)):
+        diacritization = ''.join((text[2*i], niqqud[i], dagesh[i], sin[i]))
         output = ''.join((output, diacritization))
     return output.replace(pre_processing.RAFE, '')
 
@@ -228,8 +246,6 @@ def format_output_y2(text, y2) -> str:
         diacritization = ''.join(dataset.id_to_niqqud_dict[id])
         output = ''.join((output, diacritization))
     return output
-
-
 
 
 if __name__ == '__main__':
