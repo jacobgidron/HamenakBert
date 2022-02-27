@@ -7,6 +7,7 @@ from transformers import AutoTokenizer
 import pre_processing
 import utils
 
+tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
 
 class CharacterTable:
     MASK_TOKEN = ''
@@ -95,8 +96,8 @@ class textDataset(Dataset):
         Args:
         """
 
-        def pad(ords, dtype='int32', value=0):
-            return utils.pad_sequences(ords, maxlen=maxlen+1, dtype=dtype, value=value)
+        def pad(ords, value=0):
+            return utils.pad_lists(ords, maxlen=maxlen+1, value=value)
 
         self.data = []
         corpora = read_corpora(base_paths)
