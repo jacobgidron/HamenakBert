@@ -68,13 +68,13 @@ def pad_sequences(sequences, maxlen, dtype, value):
         if not len(s):
             continue  # empty list/array was found
         trunc = s[:maxlen]
-        x[idx, :len(trunc)] = np.asarray(trunc, dtype=dtype)
+        x[idx, 1:len(trunc)+1] = np.asarray(trunc, dtype=dtype)
     return x
 
 def pad_lists(sequences, maxlen, value):
     x = []
     for seq in sequences:
-        x.append(seq + [value] * (maxlen - len(seq)))
+        x.append([value] + seq + [value] * (maxlen - len(seq)-1))
     return x
 
 def shuffle_in_unison(*arrs):
