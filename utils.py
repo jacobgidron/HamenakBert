@@ -51,7 +51,7 @@ def smart_open(filename: str, mode: str = 'r', *args, **kwargs):
                 pass
 
 
-def pad_sequences(sequences, maxlen, dtype, value) -> np.ndarray:
+def pad_sequences(sequences, maxlen, dtype, value):
     # based on keras' pad_sequences()
     num_samples = len(sequences)
 
@@ -71,6 +71,11 @@ def pad_sequences(sequences, maxlen, dtype, value) -> np.ndarray:
         x[idx, :len(trunc)] = np.asarray(trunc, dtype=dtype)
     return x
 
+def pad_lists(sequences, maxlen, value):
+    x = []
+    for seq in sequences:
+        x.append(seq + [value] * (maxlen - len(seq)))
+    return x
 
 def shuffle_in_unison(*arrs):
     rng_state = np.random.get_state()
