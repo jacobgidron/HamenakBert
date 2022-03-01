@@ -1,0 +1,65 @@
+
+from pytorch_lightning import LightningDataModule, LightningModule, Trainer, seed_everything
+from torch.utils.data import DataLoader
+from dataset import textDataset, MAX_LEN
+from transformers import AutoTokenizer, get_linear_schedule_with_warmup
+
+
+class HebrewDataModule(LightningDataModule):
+
+    def __init__(
+            self,
+            train_paths,
+            val_path,
+            test_paths,
+            model="tau/tavbert-he",
+            max_seq_length: int = 128,
+            train_batch_size: int = 32,
+            eval_batch_size: int = 32,
+            **kwargs,
+    ):
+        super().__init__()
+        self.model = model
+        self.train_paths = train_paths
+        self.val_paths = val_path
+        self.test_paths = test_paths
+        self.max_seq_length = max_seq_length
+        self.train_batch_size = train_batch_size
+        self.eval_batch_size = eval_batch_size
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model, use_fast=True)
+
+    def setup(self, stage: str = None):
+        self.train_data = textDataset(
+            self.train_paths,
+            MAX_LEN,
+            self.tokenizer
+        )
+
+        self.val_data = textDataset(
+            self.val_paths,
+            MAX_LEN,
+            self.tokenizer
+        )
+
+        self.test_data = textDataset(
+            self.test_paths,
+            MAX_LEN,
+            self.tokenizer
+        )
+
+    def train_dataloader(self):
+        return DataLoader(self.train_data, batch_size=self.train_batch_size, shuffle=True, num_workers=2)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_data, batch_size=self.eval_batch_size, num_workers=2)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_data, batch_size=self.eval_batch_size, num_workers=2)
+
+
+
+if __name__ == '__main__':
+    dm = HebrewDataModule("tau/tavbert-he")
+    dm.prepare_data()
+    for batch in dm.train_dataloader():
+         break
