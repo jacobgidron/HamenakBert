@@ -267,7 +267,7 @@ def split_by_sentence(characters: Iterable, maxlen: int, minlen: int):
 
 
 class Token:
-    items: tuple[HebrewItem]
+    items: tuple
 
     def __str__(self):
         return ''.join(str(c) for c in self.items)
@@ -275,7 +275,7 @@ class Token:
     def __lt__(self, other: 'Token'):
         return (self.to_undotted(), str(self)) < (other.to_undotted(), str(other))
 
-    def split_on_hebrew(self) -> tuple[str, 'Token', str]:
+    def split_on_hebrew(self) -> tuple:
         start = 0
         end = len(self.items) - 1
         while True:
