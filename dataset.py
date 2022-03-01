@@ -33,6 +33,7 @@ class CharacterTable:
     def __repr__(self):
         return repr(self.chars)
 
+MAX_LEN = 120
 
 letters_table = CharacterTable(pre_processing.SPECIAL_TOKENS + pre_processing.VALID_LETTERS)
 dagesh_table = CharacterTable(pre_processing.DAGESH)
@@ -44,7 +45,7 @@ NIQQUD_SIZE = len(niqqud_table)
 DAGESH_SIZE = len(dagesh_table)
 SIN_SIZE = len(sin_table)
 
-tokenize = AutoTokenizer.from_pretrained("tau/tavbert-he")
+tokenize = AutoTokenizer.from_pretrained("tau/tavbert-he", use_fast=True)
 
 # A dictionary that converts a triplet (niqqud, dagesh, sin) into a unique ID for the triplet
 niqqud_to_id_dict = {}
@@ -100,7 +101,9 @@ class textDataset(Dataset):
         def pad(ords, value=0):
             return utils.pad_lists(ords, maxlen=maxlen+1, value=value)
 
-        self.data = []
+        self.labels = []
+        self.text = []
+        # self.data = []
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
             text, normalized, dagesh, sin, niqqud = zip(
@@ -119,19 +122,24 @@ class textDataset(Dataset):
                     y3[i][j][sin[i][j]] = 1/3
 
             for i in range(len(text)):
-                item = {
-                    "text": "".join(normalized[i]),
-                    "y1": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
-                    "y2": [niqqud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))],
-                    "y3": y3
-                }
-                self.data.append(item)
+                self.labels.append({'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]})
+                self.text.append("".join(normalized[i]))
+                # item = {
+                #     "text": "".join(normalized[i]),
+                #     "label": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
+                #     #"y2": [niqqud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))],
+                #     #"y3": y3
+                # }
+                # self.data.append(item)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.labels)
 
     def __getitem__(self, idx):
-        return self.data[idx]
+        label = self.labels[idx]
+        text = self.text[idx]
+        return {"text": text, "label": label}
+        # return self.data[idx]
 
 
 def read_corpora(base_paths):
@@ -147,8 +155,18 @@ if __name__ == '__main__':
     # print(res)
     # train_dict = {}
     # train_dict["test"] = get_xy(load_data(tuple(['train1.txt', 'train2.txt']), maxlen=16).shuffle())
-    testData = textDataset(tuple(['train1.txt', 'train2.txt']), 16)
-    print_tables()
-    print(letters_table.to_ids(["שלום"]))
+    testData = textDataset(tuple(["hebrew_diacritized/train/modern/law"]), 120)
+    x = 5
+
+
+    #print_tables()
+    # print(letters_table.to_ids(["שלום"]))
+    # for i in range(1):
+    #     sample = testData[i]
+    #     print(sample)
+    #     print(f"{i}: text type is {type(sample['text'])}. the text is:\n {sample['text']}\n\n\n")
+    #     print(
+    #         f"{i}: y1 type is {type(sample['y1'])}. y1 is:\n {sample['y1']}\n\n\n")
+    #     x=5
 
 # load_data.clear_cache()
