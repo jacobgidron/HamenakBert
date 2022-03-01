@@ -8,7 +8,8 @@ import pre_processing
 import utils
 
 MIN_LEN = 10
-tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he")
+MAX_LEN = 120
+
 
 class CharacterTable:
     MASK_TOKEN = ''
@@ -33,7 +34,6 @@ class CharacterTable:
     def __repr__(self):
         return repr(self.chars)
 
-MAX_LEN = 120
 
 letters_table = CharacterTable(pre_processing.SPECIAL_TOKENS + pre_processing.VALID_LETTERS)
 dagesh_table = CharacterTable(pre_processing.DAGESH)
@@ -44,8 +44,6 @@ LETTERS_SIZE = len(letters_table)
 NIQQUD_SIZE = len(niqqud_table)
 DAGESH_SIZE = len(dagesh_table)
 SIN_SIZE = len(sin_table)
-
-tokenize = AutoTokenizer.from_pretrained("tau/tavbert-he", use_fast=True)
 
 # A dictionary that converts a triplet (niqqud, dagesh, sin) into a unique ID for the triplet
 niqqud_to_id_dict = {}
@@ -92,45 +90,46 @@ def merge(texts, tnss, nss, dss, sss):
     return res
 
 
+tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he", use_fast=True)
+
+
 class textDataset(Dataset):
     def __init__(self, base_paths, maxlen):
-        """
-        Args:
-        """
 
-        def pad(ords, value=0):
-            return utils.pad_lists(ords, maxlen=maxlen+1, value=value)
+        def pad(ords, dtype='int32', value=-1):
+            return utils.pad_sequences(ords, maxlen=maxlen, dtype=dtype, value=value)
 
         self.labels = []
         self.text = []
-        # self.data = []
+        self.tokenizer = tokenizer
+
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
             text, normalized, dagesh, sin, niqqud = zip(
                 *(zip(*line) for line in pre_processing.split_by_sentence(heb_items, maxlen, MIN_LEN)))
 
-
             niqqud = pad(niqqud_table.to_ids(niqqud))
             dagesh = pad(dagesh_table.to_ids(dagesh))
             sin = pad(sin_table.to_ids(sin))
 
-            y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
-            for i in range(len(niqqud)):
-                for j in range(len(niqqud[i])):
-                    y3[i][j][niqqud[i][j]] = 1/3
-                    y3[i][j][dagesh[i][j]] = 1/3
-                    y3[i][j][sin[i][j]] = 1/3
-
             for i in range(len(text)):
                 self.labels.append({'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]})
                 self.text.append("".join(normalized[i]))
-                # item = {
-                #     "text": "".join(normalized[i]),
-                #     "label": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
-                #     #"y2": [niqqud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))],
-                #     #"y3": y3
-                # }
-                # self.data.append(item)
+
+            # y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
+            # for i in range(len(niqqud)):
+            #     for j in range(len(niqqud[i])):
+            #         y3[i][j][niqqud[i][j]] = 1/3
+            #         y3[i][j][dagesh[i][j]] = 1/3
+            #         y3[i][j][sin[i][j]] = 1/3
+            #
+            #     item = {
+            #         "text": "".join(normalized[i]),
+            #         "label": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
+            #         #"y2": [niqqud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))],
+            #         #"y3": y3
+            #     }
+            #     self.data.append(item)
 
     def __len__(self):
         return len(self.labels)
@@ -138,8 +137,24 @@ class textDataset(Dataset):
     def __getitem__(self, idx):
         label = self.labels[idx]
         text = self.text[idx]
-        return {"text": text, "label": label}
-        # return self.data[idx]
+
+        encoding = self.tokenizer.encode_plus(
+            text,
+            add_special_tokens=True,  # todo remove?
+            max_length=MAX_LEN,
+            return_token_type_ids=False,
+            padding="max_length",
+            truncation=True,
+            return_attention_mask=True,
+            return_tensors='pt',
+        )
+
+        return dict(
+            input_ids=encoding['input_ids'].flatten(),
+            attention_mask=encoding['attention_mask'].flatten(),
+            label=label,
+            text=text
+        )
 
 
 def read_corpora(base_paths):
