@@ -1,14 +1,8 @@
-from typing import Tuple, List
-import random
 import numpy as np
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer
-
 import pre_processing
 import utils
-
-MIN_LEN = 10
-MAX_LEN = 120
+from MenakBert import MAX_LEN, MIN_LEN
 
 
 class CharacterTable:
@@ -90,11 +84,8 @@ def merge(texts, tnss, nss, dss, sss):
     return res
 
 
-tokenizer = AutoTokenizer.from_pretrained("tau/tavbert-he", use_fast=True)
-
-
 class textDataset(Dataset):
-    def __init__(self, base_paths, maxlen):
+    def __init__(self, base_paths, maxlen, tokenizer):
 
         def pad(ords, dtype='int32', value=-1):
             return utils.pad_sequences(ords, maxlen=maxlen, dtype=dtype, value=value)
@@ -140,7 +131,7 @@ class textDataset(Dataset):
 
         encoding = self.tokenizer.encode_plus(
             text,
-            add_special_tokens=True,  # todo remove?
+            add_special_tokens=True,  # todo remove? good for later QA?
             max_length=MAX_LEN,
             return_token_type_ids=False,
             padding="max_length",

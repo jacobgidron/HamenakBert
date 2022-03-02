@@ -1,8 +1,9 @@
 
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer, seed_everything
 from torch.utils.data import DataLoader
-from dataset import textDataset, MAX_LEN
-from transformers import AutoTokenizer, get_linear_schedule_with_warmup
+from dataset import textDataset
+from MenakBert import MAX_LEN, Train_BatchSize, Val_BatchSize, MODEL
+from transformers import AutoTokenizer
 
 
 class HebrewDataModule(LightningDataModule):
@@ -12,10 +13,10 @@ class HebrewDataModule(LightningDataModule):
             train_paths,
             val_path,
             test_paths,
-            model="tau/tavbert-he",
-            max_seq_length: int = 128,
-            train_batch_size: int = 32,
-            eval_batch_size: int = 32,
+            model=MODEL,
+            max_seq_length: int = MAX_LEN,
+            train_batch_size: int = Train_BatchSize,
+            eval_batch_size: int = Val_BatchSize,
             **kwargs,
     ):
         super().__init__()

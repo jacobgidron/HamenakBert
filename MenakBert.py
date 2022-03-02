@@ -2,24 +2,35 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule, Trainer, seed_everything
-from transformers import AutoTokenizer, AutoModel, TrainingArguments
-from dataset import textDataset, NIQQUD_SIZE, DAGESH_SIZE, SIN_SIZE
+from transformers import AutoModel, get_linear_schedule_with_warmup
+from dataset import NIQQUD_SIZE, DAGESH_SIZE, SIN_SIZE
 from datasets import load_metric
-import HebrewDataModule
+from HebrewDataModule import HebrewDataModule
 from torchmetrics import MaxMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-MAX_LEN = 100  # todo make global
+# globals and hyper-parameters
+MODEL = "tau/tavbert-he"
+MAX_LEN = 100
+MIN_LEN = 10
+DROPOUT = 0.1
+Train_BatchSize = 32
+Val_BatchSize = 32
+LR = 1e-5
+MAX_EPOCHS = 100
+MIN_EPOCHS = 5
 
 
 class MenakBert(LightningModule):
-
-    def __init__(self):
+    def __init__(self, lr=LR, n_training_steps=None, n_warmup_steps=None):
         super().__init__()
-        self.model = AutoModel.from_pretrained("tau/tavbert-he")
+        self.model = AutoModel.from_pretrained(MODEL)
         self.linear_D = nn.Linear(768, DAGESH_SIZE)
         self.linear_S = nn.Linear(768, SIN_SIZE)
         self.linear_N = nn.Linear(768, NIQQUD_SIZE)
+        self.lr = lr
+        self.n_training_steps = n_training_steps
+        self.n_warmup_steps = n_warmup_steps
 
     def forward(self, input_ids, attention_mask, label=None):
         """
@@ -42,7 +53,19 @@ class MenakBert(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
-        return optimizer
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer,
+            num_warmup_steps=self.n_warmup_steps,
+            num_training_steps=self.n_training_steps
+        )
+
+        return dict(
+            optimizer=optimizer,
+            lr_scheduler=dict(
+                scheduler=scheduler,
+                interval='step'
+            )
+        )
 
     def training_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
