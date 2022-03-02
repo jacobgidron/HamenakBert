@@ -42,11 +42,12 @@ checkpoint_callback = ModelCheckpoint(
     monitor="train_loss",
     mode="min"
 )
-logger = TensorBoardLogger("lightning_logs", name="toxic-comments")
+logger = TensorBoardLogger("lightning_logs", name="nikkud_logs")
 early_stopping_callback = EarlyStopping(monitor='train_loss', patience=200)
 
 trainer = Trainer(
     logger=logger,
+    auto_lr_find=True,
     checkpoint_callback=checkpoint_callback,
     callbacks=[early_stopping_callback],
     max_epochs=20,
@@ -54,7 +55,7 @@ trainer = Trainer(
     progress_bar_refresh_rate=1,
     log_every_n_steps=1
 )
-
+trainer.tune(model)
 trainer.fit(model, dm)
 
 # eval
