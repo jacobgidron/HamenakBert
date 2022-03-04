@@ -1,5 +1,5 @@
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger , CSVLogger
+from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from torch.utils.data import DataLoader
 from HebrewDataModule import HebrewDataModule
 from MenakBert import MenakBert
@@ -11,10 +11,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
+import gdown
 
 seed_everything(42)
 
-MODEL = "avichr/heBERT"
+MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
+MODEL = "tau/tavbert-he"
+
 # TRAIN_PATH = 'hebrew_diacritized/train'
 # VAL_PATH = 'hebrew_diacritized/validation'
 # TEST_PATH = 'hebrew_diacritized/test_modern'
@@ -40,7 +43,7 @@ def setup_model(train_data, val_data, test_data):
         val_path=val_data,
         test_paths=test_data,
 
-        model=MODEL,
+        model=MODEL_LINK,
         max_seq_length=MAX_LEN,
         min_seq_length=MIN_LEN,
         train_batch_size=Train_BatchSize,
@@ -53,7 +56,7 @@ def setup_model(train_data, val_data, test_data):
     warmup_steps = total_training_steps // 5
 
 # init module
-    model = MenakBert(model=MODEL ,
+    model = MenakBert(model=MODEL_LINK,
                       dropout= DROPOUT,
                       train_batch_size= Train_BatchSize,
                       lr= LR,
@@ -61,7 +64,7 @@ def setup_model(train_data, val_data, test_data):
                       min_epochs= MIN_EPOCHS,
                       n_warmup_steps=warmup_steps,
                       n_training_steps=total_training_steps)
-    return model , dm
+    return model, dm
 
 def train_model(model, dm):
     # config training
@@ -79,7 +82,7 @@ def train_model(model, dm):
 
     trainer = Trainer(
         logger=logger,
-        auto_lr_find=True,
+        # auto_lr_find=True,
         checkpoint_callback=checkpoint_callback,
         callbacks=[early_stopping_callback],
         max_epochs=20,
@@ -87,8 +90,7 @@ def train_model(model, dm):
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
     )
-    trainer.tune(model)
-    trainer.fit(model, dm)
+    # trainer.tune(model)
     return trainer
 
 def eval_model(trainer, dm):
@@ -123,6 +125,9 @@ def eval_model(trainer, dm):
 # fig = plt.gcf()
 # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
 # plt.show()
+
+
 if __name__ == '__main__':
     model, dm = setup_model(train_data, val_data, test_data)
     trainer = train_model(model, dm)
+    trainer.fit(model, dm)
