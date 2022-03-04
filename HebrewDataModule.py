@@ -16,7 +16,7 @@ class HebrewDataModule(LightningDataModule):
             model=MODEL,
             max_seq_length: int = MAX_LEN,
             train_batch_size: int = Train_BatchSize,
-            eval_batch_size: int = Val_BatchSize,
+            val_batch_size: int = Val_BatchSize,
             **kwargs,
     ):
         super().__init__()
@@ -26,7 +26,7 @@ class HebrewDataModule(LightningDataModule):
         self.test_paths = test_paths
         self.max_seq_length = max_seq_length
         self.train_batch_size = train_batch_size
-        self.eval_batch_size = eval_batch_size
+        self.val_batch_size = val_batch_size
         self.tokenizer = AutoTokenizer.from_pretrained(self.model, use_fast=True)
 
     def setup(self, stage: str = None):
