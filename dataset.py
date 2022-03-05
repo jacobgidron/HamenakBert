@@ -2,7 +2,7 @@ import numpy as np
 from torch.utils.data import Dataset
 import pre_processing
 import utils
-from MenakBert import MAX_LEN, MIN_LEN
+# from MenakBert import MAX_LEN, MIN_LEN
 
 
 class CharacterTable:
@@ -38,6 +38,8 @@ LETTERS_SIZE = len(letters_table)
 NIQQUD_SIZE = len(niqqud_table)
 DAGESH_SIZE = len(dagesh_table)
 SIN_SIZE = len(sin_table)
+MAX_LEN = 100
+MIN_LEN = 10
 
 # A dictionary that converts a triplet (niqqud, dagesh, sin) into a unique ID for the triplet
 niqqud_to_id_dict = {}
@@ -93,6 +95,7 @@ class textDataset(Dataset):
         self.labels = []
         self.text = []
         self.tokenizer = tokenizer
+        self.maxlen = maxlen
 
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
@@ -132,7 +135,7 @@ class textDataset(Dataset):
         encoding = self.tokenizer.encode_plus(
             text,
             add_special_tokens=True,  # todo remove? good for later QA?
-            max_length=MAX_LEN,
+            max_length=self.maxlen,
             return_token_type_ids=False,
             padding="max_length",
             truncation=True,

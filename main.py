@@ -2,8 +2,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from HebrewDataModule import HebrewDataModule
-from MenakBert import MenakBert, Train_BatchSize, MAX_LEN, MAX_EPOCHS
-from dataset import textDataset
+from MenakBert import MenakBert
+from dataset import textDataset, MAX_LEN, MIN_LEN
 from pytorch_lightning import Trainer, seed_everything
 from sklearn.metrics import confusion_matrix
 import seaborn as sn
@@ -14,16 +14,34 @@ from sklearn.metrics import ConfusionMatrixDisplay
 
 seed_everything(42)
 
-TRAIN_PATH = 'hebrew_diacritized/train'
-VAL_PATH = 'hebrew_diacritized/validation'
-TEST_PATH = 'hebrew_diacritized/test_modern'
-
+MODEL = "avichr/heBERT"
+# TRAIN_PATH = 'hebrew_diacritized/train'
+# VAL_PATH = 'hebrew_diacritized/validation'
+# TEST_PATH = 'hebrew_diacritized/test_modern'
+TRAIN_PATH = r"hebrew_diacritized/check/train"
+VAL_PATH = "hebrew_diacritized/check/val"
+TEST_PATH = "hebrew_diacritized/check/test"
+Val_BatchSize = 32
 train_data = [TRAIN_PATH]
 val_data = [VAL_PATH]
 test_data = [TEST_PATH]
 
+DROPOUT = 0.1
+Train_BatchSize = 32
+LR = 1e-5
+MAX_EPOCHS = 100
+MIN_EPOCHS = 5
+
 # init data module
-dm = HebrewDataModule(train_data, val_data, test_data)
+dm = HebrewDataModule(
+    train_paths=train_data,
+    val_path=val_data,
+    test_paths=test_data,
+
+    model=MODEL,
+    max_seq_length=MAX_LEN,
+    train_batch_size=Train_BatchSize,
+    val_batch_size=Val_BatchSize)
 dm.setup()
 
 steps_per_epoch = len(dm.train_data) // Train_BatchSize
@@ -31,7 +49,13 @@ total_training_steps = steps_per_epoch * MAX_EPOCHS
 warmup_steps = total_training_steps // 5
 
 # init module
-model = MenakBert(n_warmup_steps=warmup_steps, n_training_steps=total_training_steps)
+model = MenakBert(model=MODEL ,
+                  dropout= DROPOUT,
+                  train_batch_size= Train_BatchSize,
+                  max_epochs=MAX_EPOCHS,
+                  min_epochs= MIN_EPOCHS,
+                  n_warmup_steps=warmup_steps,
+                  n_training_steps=total_training_steps)
 
 # config training
 checkpoint_callback = ModelCheckpoint(
@@ -47,15 +71,15 @@ early_stopping_callback = EarlyStopping(monitor='train_loss', patience=200)
 
 trainer = Trainer(
     logger=logger,
-    auto_lr_find=True,
+    # auto_lr_find=True,
     checkpoint_callback=checkpoint_callback,
     callbacks=[early_stopping_callback],
-    max_epochs=20,
+    max_epochs=2,
     gpus=1,
     progress_bar_refresh_rate=1,
     log_every_n_steps=1
 )
-trainer.tune(model)
+# trainer.tune(model)
 trainer.fit(model, dm)
 
 # eval
@@ -66,7 +90,7 @@ val_dataset = textDataset(
     tokenizer
 )
 
-sample_batch = next(iter(DataLoader(val_dataset, batch_size=8, num_workers=2)))
+sample_batch = next(iter(DataLoader(val_dataset, batch_size=8)))
 
 trained_model = MenakBert.load_from_checkpoint(
     trainer.checkpoint_callback.best_model_path,

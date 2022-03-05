@@ -1,8 +1,8 @@
 
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer, seed_everything
 from torch.utils.data import DataLoader
-from dataset import textDataset
-from MenakBert import MAX_LEN, Train_BatchSize, Val_BatchSize, MODEL
+from dataset import textDataset , MAX_LEN
+# from MenakBert import  , MODEL
 from transformers import AutoTokenizer
 
 
@@ -13,10 +13,10 @@ class HebrewDataModule(LightningDataModule):
             train_paths,
             val_path,
             test_paths,
-            model=MODEL,
-            max_seq_length: int = MAX_LEN,
-            train_batch_size: int = Train_BatchSize,
-            val_batch_size: int = Val_BatchSize,
+            model,
+            max_seq_length: int,
+            train_batch_size: int,
+            val_batch_size: int,
             **kwargs,
     ):
         super().__init__()
@@ -49,13 +49,13 @@ class HebrewDataModule(LightningDataModule):
         )
 
     def train_dataloader(self):
-        return DataLoader(self.train_data, batch_size=self.train_batch_size, shuffle=True, num_workers=2)
+        return DataLoader(self.train_data, batch_size=self.train_batch_size, shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_data, batch_size=self.eval_batch_size, num_workers=2)
+        return DataLoader(self.val_data, batch_size=self.val_batch_size)
 
     def test_dataloader(self):
-        return DataLoader(self.test_data, batch_size=self.eval_batch_size, num_workers=2)
+        return DataLoader(self.test_data, batch_size=self.val_batch_size)
 
 
 

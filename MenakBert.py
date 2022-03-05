@@ -9,22 +9,20 @@ from HebrewDataModule import HebrewDataModule
 from torchmetrics import MaxMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-# globals and hyper-parameters
-MODEL = "tau/tavbert-he"
-MAX_LEN = 100
-MIN_LEN = 10
-DROPOUT = 0.1
-Train_BatchSize = 32
-Val_BatchSize = 32
-LR = 1e-5
-MAX_EPOCHS = 100
-MIN_EPOCHS = 5
-
 
 class MenakBert(LightningModule):
-    def __init__(self, lr=LR, n_training_steps=None, n_warmup_steps=None):
+    def __init__(self,
+                 model,
+                 dropout ,
+                 train_batch_size ,
+                 max_epochs ,
+                 min_epochs ,
+                 lr,
+                 n_training_steps=None,
+                 n_warmup_steps=None
+                 ):
         super().__init__()
-        self.model = AutoModel.from_pretrained(MODEL)
+        self.model = AutoModel.from_pretrained(model)
         self.linear_D = nn.Linear(768, DAGESH_SIZE)
         self.linear_S = nn.Linear(768, SIN_SIZE)
         self.linear_N = nn.Linear(768, NIQQUD_SIZE)
@@ -45,10 +43,10 @@ class MenakBert(LightningModule):
 
         loss = 0
         if label is not None:
-          loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=-1)
-          loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=-1)
-          loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=-1)
-          loss = loss_n + loss_d + loss_s
+            loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=-1)
+            loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=-1)
+            loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=-1)
+            loss = loss_n + loss_d + loss_s
         return loss, output
 
     def configure_optimizers(self):
@@ -91,7 +89,12 @@ class MenakBert(LightningModule):
         self.log("test_loss", loss, prog_bar=True, logger=True)
         return loss
 
+    def test_step_end(self, output_results):
+        print(f'\n\n\n\n\n outputs shape is {output_results.shape} \n\n\n\n')
+
+
 if __name__ == "__main__":
+    temp_Val_BatchSize = 32
     seed_everything(42)
 
     TRAIN_PATH = '/content/Bert_data/train'
@@ -101,7 +104,9 @@ if __name__ == "__main__":
     train_data = [TRAIN_PATH]
     val_data = [VAL_PATH]
     test_data = [TEST_PATH]
-    dm = HebrewDataModule(train_data, val_data, test_data)
+    dm = HebrewDataModule(train_data, val_data, test_data,
+                          train_batch_size=Train_BatchSize,
+                          val_batch_size=temp_Val_BatchSize)
     dm.setup()
 
     model = MenakBert()
