@@ -27,7 +27,7 @@ class Niqqud:
 
 HEBREW_LETTERS = [chr(c) for c in range(0x05d0, 0x05ea + 1)]
 
-NIQQUD = [RAFE] + [chr(c) for c in range(0x05b0, 0x05bc + 1)] + ['\u05b7']
+NIQQUD = [RAFE] + [chr(c) for c in range(0x05b0, 0x05bc + 1)]
 
 HOLAM = Niqqud.HOLAM
 
@@ -168,7 +168,9 @@ def iterate_dotted_text(text: str) -> Iterator[HebrewItem]:
 
         # TODO: check if this is needed and what it does
         nbrd = text[i - 15:i + 15].split()[1:-1]
-        assert letter not in ANY_NIQQUD, f'{i}, {nbrd}, {letter}, {[name_of(c) for word in nbrd for c in word]}'
+        # if(letter in ANY_NIQQUD, f'{i}, {nbrd}, {letter}, {[name_of(c) for word in nbrd for c in word]}'):
+        #     print(letter)
+        # assert letter not in ANY_NIQQUD, f'{i}, {nbrd}, {letter}, {[name_of(c) for word in nbrd for c in word]}'
 
         # TODO: check if order is constant or if needs to be re-written
         if is_hebrew_letter(normalized):
