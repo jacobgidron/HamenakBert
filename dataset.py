@@ -1,3 +1,5 @@
+from collections import Counter
+
 import numpy as np
 from torch.utils.data import Dataset
 import pre_processing
@@ -44,9 +46,8 @@ niqqud_to_id_dict = {}
 # A dictionary that an ID to a triplet (niqqud, dagesh, sin). The reverse of niqqud_to_id_dict
 id_to_niqqud_dict = {}
 
-
 Y2_SIZE = 0
-for niqqud in range(NIQQUD_SIZE ):
+for niqqud in range(NIQQUD_SIZE):
     for sin in range(SIN_SIZE):
         for dag in range(DAGESH_SIZE):
             niqqud_to_id_dict[(niqqud, dag, sin)] = Y2_SIZE
@@ -94,6 +95,7 @@ class textDataset(Dataset):
         self.tokenizer = tokenizer
         self.maxlen = maxlen
         self.minlen = minlen
+        self.counter = {'N': Counter(), 'D': Counter(), 'S': Counter()}
 
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
@@ -105,6 +107,10 @@ class textDataset(Dataset):
             sin = pad(sin_table.to_ids(sin))
 
             for i in range(len(text)):
+                self.counter['N'] += Counter(niqqud[i])
+                self.counter['D'] += Counter(dagesh[i])
+                self.counter['S'] += Counter(sin[i])
+
                 self.labels.append({'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]})
                 self.text.append("".join(normalized[i]))
 
@@ -162,11 +168,10 @@ if __name__ == '__main__':
     # print(res)
     # train_dict = {}
     # train_dict["test"] = get_xy(load_data(tuple(['train1.txt', 'train2.txt']), maxlen=16).shuffle())
-    testData = textDataset(tuple(["hebrew_diacritized/train/modern/law"]), 120)
+    testData = textDataset(tuple(["hebrew_diacritized/train"]), 100, 10, None)
     x = 5
 
-
-    #print_tables()
+    # print_tables()
     # print(letters_table.to_ids(["שלום"]))
     # for i in range(1):
     #     sample = testData[i]

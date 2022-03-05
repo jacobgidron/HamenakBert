@@ -94,11 +94,11 @@ def eval_model(trainer, dm):
     pred = np.argmax(predictions['N'].cpu().detach().numpy(), axis=-1)
     labels = sample_batch["label"]['N'].cpu().detach().numpy()
 
-plt.figure(figsize=(12, 7))
-classes = ["none", "rafa", "shva", "hataph segol", "hataph patah", "hataph kamats", "hirik", "chere", "segol", "phatah",
-           "kamats", "hulam(full)", "hulam", "kubuch", "shuruk", "phatah"]
-print(len(classes))
-ax = ConfusionMatrixDisplay.from_predictions(labels.flatten(), pred.flatten(), display_labels=classes, normalize="true")
-fig = plt.gcf()
-fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
-plt.show()
+    plt.figure(figsize=(12, 7))
+    classes = ["none", "rafa", "shva", "hataph segol", "hataph patah", "hataph kamats", "hirik", "chere", "segol", "phatah",
+               "kamats", "hulam(full)", "hulam", "kubuch", "shuruk", "phatah"]
+    print(len(classes))
+    ax = ConfusionMatrixDisplay.from_predictions(labels.flatten(), pred.flatten(), display_labels=classes, normalize="true")
+    fig = plt.gcf()
+    fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
+    plt.show()
