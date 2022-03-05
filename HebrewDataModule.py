@@ -1,7 +1,7 @@
 
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer, seed_everything
 from torch.utils.data import DataLoader
-from dataset import textDataset , MAX_LEN
+from dataset import textDataset
 # from MenakBert import  , MODEL
 from transformers import AutoTokenizer
 
@@ -32,19 +32,19 @@ class HebrewDataModule(LightningDataModule):
     def setup(self, stage: str = None):
         self.train_data = textDataset(
             self.train_paths,
-            MAX_LEN,
+            self.max_seq_length,
             self.tokenizer
         )
 
         self.val_data = textDataset(
             self.val_paths,
-            MAX_LEN,
+            self.max_seq_length,
             self.tokenizer
         )
 
         self.test_data = textDataset(
             self.test_paths,
-            MAX_LEN,
+            self.max_seq_length,
             self.tokenizer
         )
 

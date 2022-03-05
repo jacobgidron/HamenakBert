@@ -2,7 +2,6 @@ import numpy as np
 from torch.utils.data import Dataset
 import pre_processing
 import utils
-# from MenakBert import MAX_LEN, MIN_LEN
 
 
 class CharacterTable:
@@ -38,8 +37,6 @@ LETTERS_SIZE = len(letters_table)
 NIQQUD_SIZE = len(niqqud_table)
 DAGESH_SIZE = len(dagesh_table)
 SIN_SIZE = len(sin_table)
-MAX_LEN = 100
-MIN_LEN = 10
 
 # A dictionary that converts a triplet (niqqud, dagesh, sin) into a unique ID for the triplet
 niqqud_to_id_dict = {}
@@ -87,7 +84,7 @@ def merge(texts, tnss, nss, dss, sss):
 
 
 class textDataset(Dataset):
-    def __init__(self, base_paths, maxlen, tokenizer):
+    def __init__(self, base_paths, maxlen, minlen, tokenizer):
 
         def pad(ords, dtype='int32', value=-1):
             return utils.pad_sequences(ords, maxlen=maxlen, dtype=dtype, value=value)
@@ -96,11 +93,12 @@ class textDataset(Dataset):
         self.text = []
         self.tokenizer = tokenizer
         self.maxlen = maxlen
+        self.minlen = minlen
 
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
             text, normalized, dagesh, sin, niqqud = zip(
-                *(zip(*line) for line in pre_processing.split_by_sentence(heb_items, maxlen, MIN_LEN)))
+                *(zip(*line) for line in pre_processing.split_by_sentence(heb_items, maxlen, minlen)))
 
             niqqud = pad(niqqud_table.to_ids(niqqud))
             dagesh = pad(dagesh_table.to_ids(dagesh))
