@@ -16,65 +16,62 @@ from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
 
+
 seed_everything(42)
 
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
 
-
 # TRAIN_PATH = 'hebrew_diacritized/train'
 # VAL_PATH = 'hebrew_diacritized/validation'
 # TEST_PATH = 'hebrew_diacritized/test_modern'
-# TRAIN_PATH = r"hebrew_diacritized/check/train"
-# VAL_PATH = "hebrew_diacritized/check/val"
-# TEST_PATH = "hebrew_diacritized/check/test"
-# Val_BatchSize = 32
-# train_data = [TRAIN_PATH]
-# val_data = [VAL_PATH]
-# test_data = [TEST_PATH]
-# DROPOUT = 0.1
-# Train_BatchSize = 32
-# LR = 1e-5
-# MAX_EPOCHS = 100
-# MIN_EPOCHS = 5
-# MAX_LEN = 100
-# MIN_LEN = 10
+TRAIN_PATH = r"hebrew_diacritized/check/train"
+VAL_PATH = "hebrew_diacritized/check/val"
+TEST_PATH = "hebrew_diacritized/check/test"
+Val_BatchSize = 32
+train_data = [TRAIN_PATH]
+val_data = [VAL_PATH]
+test_data = [TEST_PATH]
+DROPOUT = 0.1
+Train_BatchSize = 32
+LR = 1e-5
+MAX_EPOCHS = 100
+MIN_EPOCHS = 5
+MAX_LEN = 100
+MIN_LEN = 10
 
-
-def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
-                val_batch_size, max_epochs, min_epochs, weighted_loss):
+def setup_model(train_data, val_data, test_data):
     # init data module
     if not os.path.exists("tavbert"):
         os.mkdir("tavbert")
-        gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing",
-                              output="tavbert")
+        gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing", output="tavbert")
 
     dm = HebrewDataModule(
         train_paths=train_data,
         val_path=val_data,
         test_paths=test_data,
-        model=model,
-        max_seq_length=maxlen,
-        min_seq_length=minlen,
-        train_batch_size=train_batch_size,
-        val_batch_size=val_batch_size)
+        model=MODEL,
+        max_seq_length=MAX_LEN,
+        min_seq_length=MIN_LEN,
+        train_batch_size=Train_BatchSize,
+        val_batch_size=Val_BatchSize)
     dm.setup()
 
-    steps_per_epoch = len(dm.train_data) // train_batch_size
-    total_training_steps = steps_per_epoch * max_epochs
+
+    steps_per_epoch = len(dm.train_data) // Train_BatchSize
+    total_training_steps = steps_per_epoch * MAX_EPOCHS
     warmup_steps = total_training_steps // 5
 
-    # init module
-    model = MenakBert(model=model,
-                      dropout=dropout,
-                      train_batch_size=train_batch_size,
-                      lr=lr,
-                      max_epochs=max_epochs,
-                      min_epochs=min_epochs,
+# init module
+    model = MenakBert(model=MODEL,
+                      dropout= DROPOUT,
+                      train_batch_size= Train_BatchSize,
+                      lr= LR,
+                      max_epochs=MAX_EPOCHS,
+                      min_epochs= MIN_EPOCHS,
                       n_warmup_steps=warmup_steps,
                       n_training_steps=total_training_steps)
     return model, dm
-
 
 def train_model(model, dm):
     # config training
@@ -95,13 +92,13 @@ def train_model(model, dm):
         # auto_lr_find=True,
         checkpoint_callback=checkpoint_callback,
         callbacks=[early_stopping_callback],
-        max_epochs=20,
-        # gpus=1,
+        max_epochs=MAX_EPOCHS,
+        min_epochs=MIN_EPOCHS,
+        gpus=1,
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
     )
     # trainer.tune(model)
-    trainer.fit(model, dm)
     return trainer
 
 
@@ -149,5 +146,7 @@ def testModel(cfg: DictConfig):
     eval_model(complete_trainer,dm,cfg.datset.val_path,cfg.dataset.max_len)
 
 if __name__ == '__main__':
-    testModel()
-
+    model, dm = setup_model(train_data, val_data, test_data)
+    trainer = train_model(model, dm)
+    trainer.fit(model, dm)
+    trainer.test(model, dm)
