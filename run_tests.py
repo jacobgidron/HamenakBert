@@ -19,7 +19,7 @@ def create_slurm(main_path):
     f.write("#SBATCH --nodes=1\n")
     f.write("#SBATCH --ntasks=1\n")
     f.write("#SBATCH --gpus=1\n")
-    f.write(f"python {main_path}main.py")
+    f.write(f"python {main_path}/main.py")
     f.close()
     os.system("sbatch menakbert_job.slurm")
 
