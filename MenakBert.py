@@ -22,8 +22,9 @@ class MenakBert(LightningModule):
                  train_batch_size,
                  max_epochs,
                  min_epochs,
+                 weights=None,
                  n_training_steps=None,
-                 n_warmup_steps=None
+                 n_warmup_steps=None,
                  ):
         super().__init__()
         self.model = AutoModel.from_pretrained(model)
@@ -36,6 +37,7 @@ class MenakBert(LightningModule):
         self.n_warmup_steps = n_warmup_steps
         self.train_batch_size = train_batch_size
         self.save_hyperparameters()
+        self.weights = weights
 
     def forward(self, input_ids, attention_mask, label=None):
         """
@@ -50,9 +52,14 @@ class MenakBert(LightningModule):
 
         loss = 0
         if label is not None:
-            loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=-1)
-            loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=-1)
-            loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=-1)
+            if self.weights is not None:
+                loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=-1, weight=self.weights['N'])
+                loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=-1, weight=self.weights['D'])
+                loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=-1, weight=self.weights['S'])
+            else:
+                loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=-1)
+                loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=-1)
+                loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=-1)
             loss = loss_n + loss_d + loss_s
         return loss, output
 

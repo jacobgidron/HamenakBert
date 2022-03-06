@@ -38,7 +38,8 @@ MIN_EPOCHS = 5
 MAX_LEN = 100
 MIN_LEN = 10
 
-def setup_model(train_data, val_data, test_data):
+
+def setup_model(train_data, val_data, test_data, weighted_loss=False):
     # init data module
     if not os.path.exists("tavbert"):
         os.mkdir("tavbert")
@@ -55,6 +56,21 @@ def setup_model(train_data, val_data, test_data):
         val_batch_size=Val_BatchSize)
     dm.setup()
 
+    weights = None
+    if weighted_loss:
+        tmp = dm.train_data.counter['N']
+        n_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
+        n_weights = n_weights/np.linalg.norm(n_weights)
+
+        tmp = dm.train_data.counter['D']
+        d_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
+        d_weights = d_weights / np.linalg.norm(d_weights)
+
+        tmp = dm.train_data.counter['S']
+        s_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
+        s_weights = s_weights / np.linalg.norm(s_weights)
+
+        weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
 
     steps_per_epoch = len(dm.train_data) // Train_BatchSize
     total_training_steps = steps_per_epoch * MAX_EPOCHS
@@ -62,13 +78,14 @@ def setup_model(train_data, val_data, test_data):
 
 # init module
     model = MenakBert(model=MODEL,
-                      dropout= DROPOUT,
-                      train_batch_size= Train_BatchSize,
-                      lr= LR,
+                      dropout=DROPOUT,
+                      train_batch_size=Train_BatchSize,
+                      lr=LR,
                       max_epochs=MAX_EPOCHS,
-                      min_epochs= MIN_EPOCHS,
+                      min_epochs=MIN_EPOCHS,
                       n_warmup_steps=warmup_steps,
-                      n_training_steps=total_training_steps)
+                      n_training_steps=total_training_steps,
+                      weights=weights)
     return model, dm
 
 def train_model(model, dm):
