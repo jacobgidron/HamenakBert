@@ -30,6 +30,7 @@ class MenakBert(LightningModule):
         self.linear_D = nn.Linear(768, DAGESH_SIZE)
         self.linear_S = nn.Linear(768, SIN_SIZE)
         self.linear_N = nn.Linear(768, NIQQUD_SIZE)
+        self.dropout = nn.Dropout(0.2)
         self.lr = lr
         self.n_training_steps = n_training_steps
         self.n_warmup_steps = n_warmup_steps
