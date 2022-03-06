@@ -1,3 +1,5 @@
+import hydra
+from omegaconf import DictConfig
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from torch.utils.data import DataLoader
@@ -14,62 +16,65 @@ from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
 
-
 seed_everything(42)
 
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
 
+
 # TRAIN_PATH = 'hebrew_diacritized/train'
 # VAL_PATH = 'hebrew_diacritized/validation'
 # TEST_PATH = 'hebrew_diacritized/test_modern'
-TRAIN_PATH = r"hebrew_diacritized/check/train"
-VAL_PATH = "hebrew_diacritized/check/val"
-TEST_PATH = "hebrew_diacritized/check/test"
-Val_BatchSize = 32
-train_data = [TRAIN_PATH]
-val_data = [VAL_PATH]
-test_data = [TEST_PATH]
-DROPOUT = 0.1
-Train_BatchSize = 32
-LR = 1e-5
-MAX_EPOCHS = 100
-MIN_EPOCHS = 5
-MAX_LEN = 100
-MIN_LEN = 10
+# TRAIN_PATH = r"hebrew_diacritized/check/train"
+# VAL_PATH = "hebrew_diacritized/check/val"
+# TEST_PATH = "hebrew_diacritized/check/test"
+# Val_BatchSize = 32
+# train_data = [TRAIN_PATH]
+# val_data = [VAL_PATH]
+# test_data = [TEST_PATH]
+# DROPOUT = 0.1
+# Train_BatchSize = 32
+# LR = 1e-5
+# MAX_EPOCHS = 100
+# MIN_EPOCHS = 5
+# MAX_LEN = 100
+# MIN_LEN = 10
 
-def setup_model(train_data, val_data, test_data):
+
+def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
+                val_batch_size, max_epochs, min_epochs, weighted_loss):
     # init data module
     if not os.path.exists("tavbert"):
         os.mkdir("tavbert")
-        gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing", output="tavbert")
+        gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing",
+                              output="tavbert")
 
     dm = HebrewDataModule(
         train_paths=train_data,
         val_path=val_data,
         test_paths=test_data,
-        model=MODEL,
-        max_seq_length=MAX_LEN,
-        min_seq_length=MIN_LEN,
-        train_batch_size=Train_BatchSize,
-        val_batch_size=Val_BatchSize)
+        model=model,
+        max_seq_length=maxlen,
+        min_seq_length=minlen,
+        train_batch_size=train_batch_size,
+        val_batch_size=val_batch_size)
     dm.setup()
 
-
-    steps_per_epoch = len(dm.train_data) // Train_BatchSize
-    total_training_steps = steps_per_epoch * MAX_EPOCHS
+    steps_per_epoch = len(dm.train_data) // train_batch_size
+    total_training_steps = steps_per_epoch * max_epochs
     warmup_steps = total_training_steps // 5
 
-# init module
-    model = MenakBert(model=MODEL,
-                      dropout= DROPOUT,
-                      train_batch_size= Train_BatchSize,
-                      lr= LR,
-                      max_epochs=MAX_EPOCHS,
-                      min_epochs= MIN_EPOCHS,
+    # init module
+    model = MenakBert(model=model,
+                      dropout=dropout,
+                      train_batch_size=train_batch_size,
+                      lr=lr,
+                      max_epochs=max_epochs,
+                      min_epochs=min_epochs,
                       n_warmup_steps=warmup_steps,
                       n_training_steps=total_training_steps)
     return model, dm
+
 
 def train_model(model, dm):
     # config training
@@ -96,14 +101,16 @@ def train_model(model, dm):
         log_every_n_steps=1
     )
     # trainer.tune(model)
+    trainer.fit(model, dm)
     return trainer
 
-def eval_model(trainer, dm):
+
+def eval_model(trainer, dm, val_path, maxlen):
     # eval
     tokenizer = dm.tokenizer
     val_dataset = textDataset(
-        [VAL_PATH],
-        MAX_LEN,
+        [val_path],
+        maxlen,
         tokenizer
     )
 
@@ -120,6 +127,7 @@ def eval_model(trainer, dm):
     mask = sample_batch["attention_mask"]
     _, predictions = trained_model(input, mask)
 
+
 # pred = np.argmax(predictions['N'].cpu().detach().numpy(), axis=-1)
 # labels = sample_batch["label"]['N'].cpu().detach().numpy()
 #
@@ -131,8 +139,15 @@ def eval_model(trainer, dm):
 # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
 # plt.show()
 
+@hydra.main(config_path=".hydra", config_name="config")
+def testModel(cfg: DictConfig):
+    model, dm = setup_model("", cfg.dataset.train_path, cfg.dataset.val_path, cfg.dataset.test_path, MODEL,
+                            cfg.dataset.max_len, cfg.dataset.min_len, cfg.hyper_params.lr, cfg.hyper_params.dropout,
+                            cfg.hyper_params.train_batch_size, cfg.hyper_params.val_batch_size,
+                            cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs)
+    complete_trainer = train_model(model,dm)
+    eval_model(complete_trainer,dm,cfg.datset.val_path,cfg.dataset.max_len)
 
 if __name__ == '__main__':
-    model, dm = setup_model(train_data, val_data, test_data)
-    trainer = train_model(model, dm)
-    trainer.fit(model, dm)
+    testModel()
+
