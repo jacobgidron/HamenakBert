@@ -83,15 +83,16 @@ def train_model(model, dm):
     )
     logger = CSVLogger("lightning_csv_logs", name="nikkud_logs")
     # logger = TensorBoardLogger("lightning_logs", name="nikkud_logs")
-    early_stopping_callback = EarlyStopping(monitor='train_loss', patience=200)
+    early_stopping_callback = EarlyStopping(monitor='train_loss', patience=7)
 
     trainer = Trainer(
         logger=logger,
         # auto_lr_find=True,
         checkpoint_callback=checkpoint_callback,
         callbacks=[early_stopping_callback],
-        max_epochs=20,
-        # gpus=1,
+        max_epochs=MAX_EPOCHS,
+        min_epochs=MIN_EPOCHS,
+        gpus=1,
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
     )
@@ -136,3 +137,4 @@ if __name__ == '__main__':
     model, dm = setup_model(train_data, val_data, test_data)
     trainer = train_model(model, dm)
     trainer.fit(model, dm)
+    trainer.test(model, dm)
