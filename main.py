@@ -12,11 +12,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
+import os
+
 
 seed_everything(42)
 
-MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
-MODEL = "tau/tavbert-he"
+# MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
+MODEL = "tavbert"
 
 # TRAIN_PATH = 'hebrew_diacritized/train'
 # VAL_PATH = 'hebrew_diacritized/validation'
@@ -38,12 +40,15 @@ MIN_LEN = 10
 
 def setup_model(train_data, val_data, test_data):
     # init data module
+    if not os.path.exists("tavbert"):
+        os.mkdir("tavbert")
+        gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing", output="tavbert")
+
     dm = HebrewDataModule(
         train_paths=train_data,
         val_path=val_data,
         test_paths=test_data,
-
-        model=MODEL_LINK,
+        model=MODEL,
         max_seq_length=MAX_LEN,
         min_seq_length=MIN_LEN,
         train_batch_size=Train_BatchSize,
@@ -56,7 +61,7 @@ def setup_model(train_data, val_data, test_data):
     warmup_steps = total_training_steps // 5
 
 # init module
-    model = MenakBert(model=MODEL_LINK,
+    model = MenakBert(model=MODEL,
                       dropout= DROPOUT,
                       train_batch_size= Train_BatchSize,
                       lr= LR,
@@ -86,7 +91,7 @@ def train_model(model, dm):
         checkpoint_callback=checkpoint_callback,
         callbacks=[early_stopping_callback],
         max_epochs=20,
-        gpus=1,
+        # gpus=1,
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
     )
