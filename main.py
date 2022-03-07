@@ -60,15 +60,15 @@ def setup_model(train_data, val_data, test_data, weighted_loss=False):
     if weighted_loss:
         tmp = dm.train_data.counter['N']
         n_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        n_weights = n_weights/np.linalg.norm(n_weights)
+        n_weights = n_weights.sum()/n_weights
 
         tmp = dm.train_data.counter['D']
         d_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        d_weights = d_weights / np.linalg.norm(d_weights)
+        d_weights = d_weights.sum()/d_weights
 
         tmp = dm.train_data.counter['S']
         s_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        s_weights = s_weights / np.linalg.norm(s_weights)
+        s_weights = s_weights.sum()/s_weights
 
         weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
 
