@@ -95,7 +95,9 @@ class textDataset(Dataset):
         self.tokenizer = tokenizer
         self.maxlen = maxlen
         self.minlen = minlen
-        self.counter = {'N': Counter(), 'D': Counter(), 'S': Counter()}
+        self.counter = {'N': Counter([i for i in range(NIQQUD_SIZE)]),
+                        'D': Counter([i for i in range(DAGESH_SIZE)]),
+                        'S': Counter([i for i in range(SIN_SIZE)])}
 
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
@@ -172,7 +174,7 @@ if __name__ == '__main__':
     # print(res)
     # train_dict = {}
     # train_dict["test"] = get_xy(load_data(tuple(['train1.txt', 'train2.txt']), maxlen=16).shuffle())
-    testData = textDataset(tuple(["hebrew_diacritized/train"]), 100, 10, None)
+    testData = textDataset(tuple(["hebrew_diacritized/train/modern/shortstoryproject_Dicta"]), 100, 10, None)
     x = 5
 
     # print_tables()
