@@ -1,6 +1,7 @@
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from torch.utils.data import DataLoader
+import torch
 from HebrewDataModule import HebrewDataModule
 from MenakBert import MenakBert
 from dataset import textDataset
@@ -14,7 +15,7 @@ from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
 
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 seed_everything(42)
 
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
@@ -59,16 +60,16 @@ def setup_model(train_data, val_data, test_data, weighted_loss=False):
     weights = None
     if weighted_loss:
         tmp = dm.train_data.counter['N']
-        n_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        n_weights = n_weights.sum()/n_weights
+        n_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+        n_weights = (n_weights.sum() / n_weights).to(device)
 
         tmp = dm.train_data.counter['D']
-        d_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        d_weights = d_weights.sum()/d_weights
+        d_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+        d_weights = (d_weights.sum() / d_weights).to(device)
 
         tmp = dm.train_data.counter['S']
-        s_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        s_weights = s_weights.sum()/s_weights
+        s_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+        s_weights = (s_weights.sum() / s_weights).to(device)
 
         weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
 
@@ -109,7 +110,7 @@ def train_model(model, dm):
         callbacks=[early_stopping_callback],
         max_epochs=MAX_EPOCHS,
         min_epochs=MIN_EPOCHS,
-        gpus=1,
+        # gpus=1,
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
     )
@@ -151,7 +152,7 @@ def eval_model(trainer, dm):
 
 
 if __name__ == '__main__':
-    model, dm = setup_model(train_data, val_data, test_data)
+    model, dm = setup_model(train_data, val_data, test_data, weighted_loss=True)
     trainer = train_model(model, dm)
     trainer.fit(model, dm)
     trainer.test(model, dm)
