@@ -39,6 +39,7 @@ class MenakBert(LightningModule):
         self.train_batch_size = train_batch_size
         self.save_hyperparameters()
         self.f1 = F1Score(ignore_index=-1)
+        self.weights = weights
 
     def forward(self, input_ids, attention_mask, label=None):
         """

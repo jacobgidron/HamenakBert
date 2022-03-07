@@ -62,15 +62,15 @@ def setup_model(train_data, val_data, test_data, weighted_loss=False):
     if weighted_loss:
         tmp = dm.train_data.counter['N']
         n_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        n_weights = n_weights/np.linalg.norm(n_weights)
+        n_weights = n_weights.sum()/n_weights
 
         tmp = dm.train_data.counter['D']
         d_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        d_weights = d_weights / np.linalg.norm(d_weights)
+        d_weights = d_weights.sum()/d_weights
 
         tmp = dm.train_data.counter['S']
         s_weights = np.array([tmp[i] for i in range(len(tmp.keys()))])
-        s_weights = s_weights / np.linalg.norm(s_weights)
+        s_weights = s_weights.sum()/s_weights
 
         weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
 
@@ -102,7 +102,7 @@ def train_model(model, dm):
     )
     logger = CSVLogger("lightning_csv_logs", name="nikkud_logs")
     # logger = TensorBoardLogger("lightning_logs", name="nikkud_logs")
-    early_stopping_callback = EarlyStopping(monitor='train_loss', patience=200)
+    early_stopping_callback = EarlyStopping(monitor='train_loss', patience=7)
 
     trainer = Trainer(
         logger=logger,
@@ -118,13 +118,12 @@ def train_model(model, dm):
     # trainer.tune(model)
     return trainer
 
-
-def eval_model(trainer, dm, val_path, maxlen):
+def eval_model(trainer, dm):
     # eval
     tokenizer = dm.tokenizer
     val_dataset = textDataset(
-        [val_path],
-        maxlen,
+        [VAL_PATH],
+        MAX_LEN,
         tokenizer
     )
 
@@ -140,7 +139,6 @@ def eval_model(trainer, dm, val_path, maxlen):
     input = sample_batch["input_ids"]
     mask = sample_batch["attention_mask"]
     _, predictions = trained_model(input, mask)
-
 
 # pred = np.argmax(predictions['N'].cpu().detach().numpy(), axis=-1)
 # labels = sample_batch["label"]['N'].cpu().detach().numpy()

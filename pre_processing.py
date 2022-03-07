@@ -27,7 +27,7 @@ class Niqqud:
 
 HEBREW_LETTERS = [chr(c) for c in range(0x05d0, 0x05ea + 1)]
 
-NIQQUD = [RAFE] + [chr(c) for c in range(0x05b0, 0x05bc + 1)]
+NIQQUD = [RAFE] + [chr(c) for c in range(0x05b0, 0x05ba)] + [chr(0x05bb), chr(0x05bc)]
 
 HOLAM = Niqqud.HOLAM
 

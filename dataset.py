@@ -111,9 +111,13 @@ class textDataset(Dataset):
                 self.counter['D'] += Counter(dagesh[i])
                 self.counter['S'] += Counter(sin[i])
 
+
                 self.labels.append({'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]})
                 self.text.append("".join(normalized[i]))
 
+        self.counter['N'].pop(-1)
+        self.counter['D'].pop(-1)
+        self.counter['S'].pop(-1)
             # y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
             # for i in range(len(niqqud)):
             #     for j in range(len(niqqud[i])):
