@@ -7,11 +7,12 @@ import torch.nn.functional as F
 from pytorch_lightning import LightningModule, Trainer, seed_everything
 from transformers import AutoModel, get_linear_schedule_with_warmup
 from dataset import NIQQUD_SIZE, DAGESH_SIZE, SIN_SIZE
-from datasets import load_metric
 from HebrewDataModule import HebrewDataModule
-from torchmetrics import MaxMetric
-from torchmetrics.classification.accuracy import Accuracy
 import numpy as np
+from torchmetrics import F1Score
+
+
+from pre_processing import name_of, DAGESH, NIQQUD, NIQQUD_SIN
 
 
 class MenakBert(LightningModule):
@@ -37,7 +38,7 @@ class MenakBert(LightningModule):
         self.n_warmup_steps = n_warmup_steps
         self.train_batch_size = train_batch_size
         self.save_hyperparameters()
-        self.weights = weights
+        self.f1 = F1Score(ignore_index=-1)
 
     def forward(self, input_ids, attention_mask, label=None):
         """
@@ -87,13 +88,34 @@ class MenakBert(LightningModule):
         self.log("train_loss", loss, prog_bar=True, logger=True)
         return {"loss": loss, "predictions": outputs, "labels": labels}
 
+    def validation_epoch_end(self, output_results):
+        logits_N = torch.cat([tmp["predictions"]["N"] for tmp in output_results])
+        logits_D = torch.cat([tmp["predictions"]["D"] for tmp in output_results])
+        logits_S = torch.cat([tmp["predictions"]["S"] for tmp in output_results])
+
+        pred_N = torch.argmax(logits_N, dim=-1)
+        pred_D = torch.argmax(logits_D, dim=-1)
+        pred_S = torch.argmax(logits_S, dim=-1)
+
+        labels_N = torch.cat([tmp["labels"]["N"] for tmp in output_results])
+        labels_D = torch.cat([tmp["labels"]["D"] for tmp in output_results])
+        labels_S = torch.cat([tmp["labels"]["S"] for tmp in output_results])
+        # self.log('valid_acc_N', self.f1, on_step=True, on_epoch=True) todo check how to use on_step=True, on_epoch=True to make the loss comut
+        # self.log('valid_acc_S', self.valid_acc, on_step=True, on_epoch=True)
+        # self.log('valid_acc_D', self.valid_acc, on_step=True, on_epoch=True)
+        print("stop")
+        self.log('train_epoch_f1_precision_S', self.f1(pred_S,labels_S))
+        self.log('train_epoch_f1_precision_D', self.f1(pred_D,labels_D))
+        self.log('train_epoch_f1_precision_N', self.f1(pred_N,labels_N))
+
     def validation_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
         labels = batch["label"]
         loss, outputs = self(input_ids, attention_mask, labels)
         self.log("val_loss", loss, prog_bar=True, logger=True)
-        return loss
+        return {"loss": loss, "predictions": outputs, "labels": labels}
+
 
     def test_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
@@ -118,60 +140,46 @@ class MenakBert(LightningModule):
 
         N_classes = ["none", "rafa", "shva", "hataph segol", "hataph patah", "hataph kamats", "hirik", "chere", "segol",
                      "phatah",
-                     "kamats", "hulam(full)", "hulam", "kubuch", "shuruk", "phatah"]
+                     "kamats", "hulam(full)", "hulam", "kubuch", "shuruk"]
         S_classes = ["NONE", "mask", "sin", "shin"]
         D_classes = ["NONE", "RAFE", "DAGESH"]
 
-        cf_matrix_N = confusion_matrix(labels_N.flatten(),
-                                       pred_N.flatten(),
-                                       labels=[i for i in range(NIQQUD_SIZE)],
-                                       normalize="true")
-        cf_matrix_S = confusion_matrix(labels_S.flatten(),
-                                       pred_S.flatten(),
-                                       labels=[i for i in range(SIN_SIZE)],
-                                       normalize="true")
-        cf_matrix_D = confusion_matrix(labels_D.flatten(),
-                                       pred_D.flatten(),
-                                       labels=[i for i in range(DAGESH_SIZE)],
-                                       normalize="true")
-
-        df_cm_N = pd.DataFrame(cf_matrix_N, index=[i for i in N_classes], columns=[i for i in N_classes])
-        df_cm_D = pd.DataFrame(cf_matrix_D, index=[i for i in D_classes], columns=[i for i in D_classes])
-        df_cm_S = pd.DataFrame(cf_matrix_S, index=[i for i in S_classes], columns=[i for i in S_classes])
-        self.log(value=torch.tensor(cf_matrix_N).long(), name="N Confusion Matrix test !!!")
         # self.log(value=cf_matrix_N, name="N Confusion Matrix")
         # self.log(value=cf_matrix_D, name="D Confusion Matrix")
         # self.log(value=cf_matrix_S, name="S Confusion Matrix")
 
         # display confusion matrix
-        # plt.figure(figsize=(12, 7))
-        # ax = ConfusionMatrixDisplay.from_predictions(labels_N.flatten(), pred_N.flatten(),
-        #                                              labels=[i for i in range(16)], display_labels=classes,
-        #                                              normalize="true")
-        # fig = plt.gcf()
-        # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
-        # plt.savefig("N Confusion Matrix")
-        # plt.close(fig)
 
-        # plt.figure(figsize=(12, 7))
-        # ax = ConfusionMatrixDisplay.from_predictions(labels_D.flatten(), pred_D.flatten(),
-        #                                              labels=[i for i in range(3)],
-        #                                              display_labels=["NONE", "RAFE", "DAGESH"],
-        #                                              normalize="true")
-        # fig = plt.gcf()
-        # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
-        # plt.savefig("D Confusion Matrix")
+        plt.figure(figsize=(12, 7))
+        ax = ConfusionMatrixDisplay.from_predictions(labels_N.flatten(), pred_N.flatten(),
+                                                     labels=[i for i in range(NIQQUD_SIZE)],
+                                                     display_labels=N_classes,
+                                                     # display_labels=["none"] + [name_of(char) for char in NIQQUD],
+                                                     normalize="true")
+        fig = plt.gcf()
+        self.logger.experiment.add_figure("N Confusion Matrix", fig)
+        plt.close(fig)
 
-        # plt.figure(figsize=(12, 7))
-        # ax = ConfusionMatrixDisplay.from_predictions(labels_S.flatten(), pred_S.flatten(),
-        #                                              labels=[i for i in range(4)],
-        #                                              display_labels=["NONE", "mask", "sin", "shin"],  # verify
-        #                                              normalize="true")
-        #
-        # fig = plt.gcf()
-        # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
-        # plt.savefig("S Confusion Matrix")
-        # plt.close(fig)
+        plt.figure(figsize=(12, 7))
+        ax = ConfusionMatrixDisplay.from_predictions(labels_D.flatten(), pred_D.flatten(),
+                                                     labels=[i for i in range(DAGESH_SIZE)],
+                                                     display_labels=D_classes,
+                                                     # display_labels=["none"] + [name_of(char) for char in DAGESH],
+                                                     normalize="true")
+        fig = plt.gcf()
+        self.logger.experiment.add_figure("D Confusion Matrix", fig)
+        plt.close(fig)
+
+        plt.figure(figsize=(12, 7))
+        ax = ConfusionMatrixDisplay.from_predictions(labels_S.flatten(), pred_S.flatten(),
+                                                     labels=[i for i in range(SIN_SIZE)],
+                                                     display_labels=S_classes,
+                                                     # display_labels=["none"] + [name_of(char) for char in NIQQUD_SIN],
+                                                     normalize="true")
+
+        fig = plt.gcf()
+        self.logger.experiment.add_figure("S Confusion Matrix", fig)
+        plt.close(fig)
 
 
 if __name__ == "__main__":
