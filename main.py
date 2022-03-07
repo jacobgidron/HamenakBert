@@ -138,7 +138,7 @@ def testModel(cfg: DictConfig):
     model, dm = setup_model(cfg.base_path, cfg.dataset.train_path, cfg.dataset.val_path, cfg.dataset.test_path, MODEL,
                             cfg.dataset.max_len, cfg.dataset.min_len, cfg.hyper_params.lr, cfg.hyper_params.dropout,
                             cfg.hyper_params.train_batch_size, cfg.hyper_params.val_batch_size,
-                            cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs, cfg.weighted_loss)
+                            cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs, cfg.hyper_params.weighted_loss)
     complete_trainer = train_model(model, dm)
     eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
 
