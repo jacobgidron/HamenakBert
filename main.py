@@ -1,3 +1,5 @@
+import hydra
+from omegaconf import DictConfig
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from torch.utils.data import DataLoader
@@ -150,6 +152,14 @@ def eval_model(trainer, dm):
 # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
 # plt.show()
 
+@hydra.main(config_path=".hydra", config_name="config")
+def testModel(cfg: DictConfig):
+    model, dm = setup_model("", cfg.dataset.train_path, cfg.dataset.val_path, cfg.dataset.test_path, MODEL,
+                            cfg.dataset.max_len, cfg.dataset.min_len, cfg.hyper_params.lr, cfg.hyper_params.dropout,
+                            cfg.hyper_params.train_batch_size, cfg.hyper_params.val_batch_size,
+                            cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs)
+    complete_trainer = train_model(model,dm)
+    eval_model(complete_trainer,dm,cfg.datset.val_path,cfg.dataset.max_len)
 
 if __name__ == '__main__':
     model, dm = setup_model(train_data, val_data, test_data, weighted_loss=True)

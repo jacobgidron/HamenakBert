@@ -10,8 +10,9 @@ hyper_params:
   lr: 0.00001
   dropout: 0.1
   batch_size: 32
-  gradient accumilation: 1
-  max epochs: 5
-  train_batchsize: 32
-  val_batchsize: 32
+  gradient_accumilation: 1
+  train_batch_size: 32
+  val_batch_size: 32
+  max_epochs: 100
+  min_epochs: 5
 
