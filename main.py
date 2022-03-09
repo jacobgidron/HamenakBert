@@ -23,23 +23,23 @@ seed_everything(42, workers=True)
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
 
-# TRAIN_PATH = 'hebrew_diacritized/train'
-# VAL_PATH = 'hebrew_diacritized/validation'
-# TEST_PATH = 'hebrew_diacritized/test_modern'
-# TRAIN_PATH = r"hebrew_diacritized/check/train"
-# VAL_PATH = "hebrew_diacritized/check/val"
-# TEST_PATH = "hebrew_diacritized/check/test"
-# Val_BatchSize = 32
-# train_data = [TRAIN_PATH]
-# val_data = [VAL_PATH]
-# test_data = [TEST_PATH]
-# DROPOUT = 0.1
-# Train_BatchSize = 32
-# LR = 1e-5
-# MAX_EPOCHS = 100
-# MIN_EPOCHS = 5
-# MAX_LEN = 100
-# MIN_LEN = 10
+TRAIN_PATH = 'hebrew_diacritized/train'
+VAL_PATH = 'hebrew_diacritized/validation'
+TEST_PATH = 'hebrew_diacritized/test_modern'
+TRAIN_PATH = r"hebrew_diacritized/check/train"
+VAL_PATH = "hebrew_diacritized/check/val"
+TEST_PATH = "hebrew_diacritized/check/test"
+Val_BatchSize = 32
+train_data = [TRAIN_PATH]
+val_data = [VAL_PATH]
+test_data = [TEST_PATH]
+DROPOUT = 0.1
+Train_BatchSize = 32
+LR = 1e-5
+MAX_EPOCHS = 100
+MIN_EPOCHS = 5
+MAX_LEN = 100
+MIN_LEN = 10
 
 
 def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
@@ -51,9 +51,12 @@ def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minle
                               output="tavbert")
 
     dm = HebrewDataModule(
-        train_paths=base_path + '/' + train_data,
-        val_path=base_path + '/' + val_data,
-        test_paths=base_path + '/' + test_data,
+        # train_paths=base_path + '/' + train_data,
+        # val_path=base_path + '/' + val_data,
+        # test_paths=base_path + '/' + test_data,
+        train_paths=train_data,
+        val_path=val_data,
+        test_paths=test_data,
         model=model,
         max_seq_length=maxlen,
         min_seq_length=minlen,
@@ -166,6 +169,14 @@ def runModel(cfg: DictConfig):
 
     #eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
 
+def run_with_globals():
+    model, dm = setup_model(train_data=train_data, val_data=val_data, test_data=test_data, model=MODEL, maxlen=MAX_LEN,
+                            minlen=MIN_LEN, lr=LR, dropout=DROPOUT, train_batch_size=Train_BatchSize,
+                            val_batch_size=Val_BatchSize, max_epochs=MAX_EPOCHS, min_epochs=MIN_EPOCHS,
+                            weighted_loss=True)
+    trainer = setup_trainer()
+    trainer.fit(model, dm)
+    trainer.test(model, dm)
 
 if __name__ == '__main__':
     runModel()
