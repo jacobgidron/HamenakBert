@@ -18,7 +18,7 @@ import gdown
 import os
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-seed_everything(42)
+seed_everything(42, workers=True)
 
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
