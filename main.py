@@ -3,18 +3,25 @@ from omegaconf import DictConfig
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from torch.utils.data import DataLoader
+import torch
 from HebrewDataModule import HebrewDataModule
 from MenakBert import MenakBert
 from dataset import textDataset
 from pytorch_lightning import Trainer, seed_everything
+from sklearn.metrics import confusion_matrix
+import seaborn as sn
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 seed_everything(42)
 
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
-
 
 # TRAIN_PATH = 'hebrew_diacritized/train'
 # VAL_PATH = 'hebrew_diacritized/validation'
@@ -36,7 +43,7 @@ MODEL = "tavbert"
 
 
 def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
-                val_batch_size, max_epochs, min_epochs, weighted_loss):
+                val_batch_size, max_epochs, min_epochs, weighted_loss=False):
     # init data module
     if not os.path.exists("tavbert"):
         os.mkdir("tavbert")
@@ -54,6 +61,22 @@ def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minle
         val_batch_size=val_batch_size)
     dm.setup()
 
+    weights = None
+    if weighted_loss:
+        tmp = dm.train_data.counter['N']
+        n_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+        n_weights = (n_weights.sum() / n_weights).to(device)
+
+        tmp = dm.train_data.counter['D']
+        d_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+        d_weights = (d_weights.sum() / d_weights).to(device)
+
+        tmp = dm.train_data.counter['S']
+        s_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+        s_weights = (s_weights.sum() / s_weights).to(device)
+
+        weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
+
     steps_per_epoch = len(dm.train_data) // train_batch_size
     total_training_steps = steps_per_epoch * max_epochs
     warmup_steps = total_training_steps // 5
@@ -66,9 +89,9 @@ def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minle
                       max_epochs=max_epochs,
                       min_epochs=min_epochs,
                       n_warmup_steps=warmup_steps,
-                      n_training_steps=total_training_steps)
+                      n_training_steps=total_training_steps,
+                      weights=weights)
     return model, dm
-
 
 def train_model(model, dm):
     # config training
@@ -82,7 +105,7 @@ def train_model(model, dm):
     )
     logger = CSVLogger("lightning_csv_logs", name="nikkud_logs")
     # logger = TensorBoardLogger("lightning_logs", name="nikkud_logs")
-    early_stopping_callback = EarlyStopping(monitor='train_loss', patience=200)
+    early_stopping_callback = EarlyStopping(monitor='train_loss', patience=5)
 
     trainer = Trainer(
         logger=logger,
@@ -120,7 +143,6 @@ def eval_model(trainer, dm, val_path, maxlen):
     input = sample_batch["input_ids"]
     mask = sample_batch["attention_mask"]
     _, predictions = trained_model(input, mask)
-
 
 # pred = np.argmax(predictions['N'].cpu().detach().numpy(), axis=-1)
 # labels = sample_batch["label"]['N'].cpu().detach().numpy()

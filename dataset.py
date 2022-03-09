@@ -95,7 +95,9 @@ class textDataset(Dataset):
         self.tokenizer = tokenizer
         self.maxlen = maxlen
         self.minlen = minlen
-        self.counter = {'N': Counter(), 'D': Counter(), 'S': Counter()}
+        self.counter = {'N': Counter([i for i in range(NIQQUD_SIZE)]),
+                        'D': Counter([i for i in range(DAGESH_SIZE)]),
+                        'S': Counter([i for i in range(SIN_SIZE)])}
 
         corpora = read_corpora(base_paths)
         for (filename, heb_items) in corpora:
@@ -111,9 +113,13 @@ class textDataset(Dataset):
                 self.counter['D'] += Counter(dagesh[i])
                 self.counter['S'] += Counter(sin[i])
 
+
                 self.labels.append({'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]})
                 self.text.append("".join(normalized[i]))
 
+        self.counter['N'].pop(-1)
+        self.counter['D'].pop(-1)
+        self.counter['S'].pop(-1)
             # y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
             # for i in range(len(niqqud)):
             #     for j in range(len(niqqud[i])):
@@ -168,7 +174,7 @@ if __name__ == '__main__':
     # print(res)
     # train_dict = {}
     # train_dict["test"] = get_xy(load_data(tuple(['train1.txt', 'train2.txt']), maxlen=16).shuffle())
-    testData = textDataset(tuple(["hebrew_diacritized/train"]), 100, 10, None)
+    testData = textDataset(tuple(["hebrew_diacritized/train/modern/shortstoryproject_Dicta"]), 100, 10, None)
     x = 5
 
     # print_tables()
