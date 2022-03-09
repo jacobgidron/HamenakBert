@@ -43,7 +43,7 @@ MODEL = "tavbert"
 
 
 def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
-                val_batch_size, max_epochs, min_epochs, weighted_loss=False):
+                val_batch_size, max_epochs, min_epochs, weighted_loss):
     # init data module
     if not os.path.exists("tavbert"):
         os.mkdir("tavbert")
@@ -93,7 +93,7 @@ def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minle
                       weights=weights)
     return model, dm
 
-def train_model(model, dm):
+def setup_trainer():
     # config training
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints",
@@ -113,12 +113,10 @@ def train_model(model, dm):
         checkpoint_callback=checkpoint_callback,
         callbacks=[early_stopping_callback],
         max_epochs=20,
-        # gpus=1,
+        gpus=1,
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
     )
-    # trainer.tune(model)
-    trainer.fit(model, dm)
     return trainer
 
 
@@ -156,14 +154,18 @@ def eval_model(trainer, dm, val_path, maxlen):
 # plt.show()
 
 @hydra.main(config_path="config", config_name="config")
-def testModel(cfg: DictConfig):
+def runModel(cfg: DictConfig):
     model, dm = setup_model(cfg.base_path, cfg.dataset.train_path, cfg.dataset.val_path, cfg.dataset.test_path, MODEL,
                             cfg.dataset.max_len, cfg.dataset.min_len, cfg.hyper_params.lr, cfg.hyper_params.dropout,
                             cfg.hyper_params.train_batch_size, cfg.hyper_params.val_batch_size,
                             cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs, cfg.hyper_params.weighted_loss)
-    complete_trainer = train_model(model, dm)
-    eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
+    trainer = setup_trainer()
+    # trainer.tune(model)
+    trainer.fit(model, dm)
+    trainer.test(model, dm)
+
+    #eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
 
 
 if __name__ == '__main__':
-    testModel()
+    runModel()
