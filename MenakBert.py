@@ -188,7 +188,7 @@ class MenakBert(LightningModule):
         plt.close(fig)
 
         plt.figure(figsize=(12, 7))
-        ax = ConfusionMatrixDisplay.from_predictions(labels_D.cpu().detach().numpy().flatten(), pred_D.flatten(),
+        ax = ConfusionMatrixDisplay.from_predictions(labels_D.flatten(), pred_D.flatten(),
                                                      labels=[i for i in range(DAGESH_SIZE)],
                                                      display_labels=D_classes,
                                                      # display_labels=["none"] + [name_of(char) for char in DAGESH],
@@ -199,7 +199,7 @@ class MenakBert(LightningModule):
 
         fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
         plt.figure(figsize=(12, 7))
-        ax = ConfusionMatrixDisplay.from_predictions(labels_S.cpu().detach().numpy().flatten(), pred_S.flatten(),
+        ax = ConfusionMatrixDisplay.from_predictions(labels_S.flatten(), pred_S.flatten(),
                                                      labels=[i for i in range(SIN_SIZE)],
                                                      display_labels=S_classes,
                                                      # display_labels=["none"] + [name_of(char) for char in NIQQUD_SIN],
