@@ -6,11 +6,10 @@ from torch import nn
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule, Trainer, seed_everything
 from transformers import AutoModel, get_linear_schedule_with_warmup
-from dataset import NIQQUD_SIZE, DAGESH_SIZE, SIN_SIZE
+from dataset import NIQQUD_SIZE, DAGESH_SIZE, SIN_SIZE, PAD_INDEX
 from HebrewDataModule import HebrewDataModule
 import numpy as np
 from torchmetrics import F1Score
-
 
 from pre_processing import name_of, DAGESH, NIQQUD, NIQQUD_SIN
 
@@ -38,7 +37,7 @@ class MenakBert(LightningModule):
         self.n_warmup_steps = n_warmup_steps
         self.train_batch_size = train_batch_size
         self.save_hyperparameters()
-        self.f1 = F1Score(ignore_index=-1)
+        self.f1 = F1Score(ignore_index=PAD_INDEX, mdmc_average="samplewise")
         self.weights = weights
 
     def forward(self, input_ids, attention_mask, label=None):
@@ -55,13 +54,16 @@ class MenakBert(LightningModule):
         loss = 0
         if label is not None:
             if self.weights is not None:
-                loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=-1, weight=self.weights['N'])
-                loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=-1, weight=self.weights['D'])
-                loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=-1, weight=self.weights['S'])
+                loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=PAD_INDEX,
+                                         weight=self.weights['N'])
+                loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=PAD_INDEX,
+                                         weight=self.weights['D'])
+                loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=PAD_INDEX,
+                                         weight=self.weights['S'])
             else:
-                loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=-1)
-                loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=-1)
-                loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=-1)
+                loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=PAD_INDEX)
+                loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=PAD_INDEX)
+                loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=PAD_INDEX)
             loss = loss_n + loss_d + loss_s
         return loss, output
 
@@ -104,52 +106,75 @@ class MenakBert(LightningModule):
         # self.log('valid_acc_N', self.f1, on_step=True, on_epoch=True) todo check how to use on_step=True, on_epoch=True to make the loss comut
         # self.log('valid_acc_S', self.valid_acc, on_step=True, on_epoch=True)
         # self.log('valid_acc_D', self.valid_acc, on_step=True, on_epoch=True)
-        print("stop")
-        self.log('train_epoch_f1_precision_S', self.f1(pred_S,labels_S))
-        self.log('train_epoch_f1_precision_D', self.f1(pred_D,labels_D))
-        self.log('train_epoch_f1_precision_N', self.f1(pred_N,labels_N))
+        pec_S = self.f1(pred_S, labels_S)
+        pec_D = self.f1(pred_D, labels_D)
+        pec_N = self.f1(pred_N, labels_N)
+        self.log('train_epoch_f1_precision_S', pec_S, prog_bar=True, logger=True)
+        self.log('train_epoch_f1_precision_D', pec_D, prog_bar=True, logger=True)
+        self.log('train_epoch_f1_precision_N', pec_N, prog_bar=True, logger=True)
+        return {'train_epoch_f1_precision_S': pec_S,
+                'train_epoch_f1_precision_D': pec_D,
+                'train_epoch_f1_precision_N': pec_N,
+                }
 
     def validation_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
         labels = batch["label"]
         loss, outputs = self(input_ids, attention_mask, labels)
-        self.log("val_loss", loss, prog_bar=True, logger=True)
+        self.log("val_loss", loss, on_step=True, prog_bar=True, logger=True)
         return {"loss": loss, "predictions": outputs, "labels": labels}
-
 
     def test_step(self, batch, batch_idx):
         input_ids = batch["input_ids"]
         attention_mask = batch["attention_mask"]
         labels = batch["label"]
         loss, outputs = self(input_ids, attention_mask, labels)
-        self.log("test_loss", loss, prog_bar=True, logger=True)
+        self.log("test_loss", loss, on_step=True, prog_bar=True, logger=True)
         return {"loss": loss, "predictions": outputs, "labels": labels}
 
     def test_epoch_end(self, output_results):
+        # logits_N = torch.cat([tmp["predictions"]["N"] for tmp in output_results])
+        # logits_D = torch.cat([tmp["predictions"]["D"] for tmp in output_results])
+        # logits_S = torch.cat([tmp["predictions"]["S"] for tmp in output_results])
+        #
+        # pred_N = np.argmax(logits_N.cpu().detach().numpy(), axis=-1)
+        # pred_D = np.argmax(logits_D.cpu().detach().numpy(), axis=-1)
+        # pred_S = np.argmax(logits_S.cpu().detach().numpy(), axis=-1)
+        #
+        # labels_N = torch.cat([tmp["labels"]["N"] for tmp in output_results]).cpu().detach().numpy()
+        # labels_D = torch.cat([tmp["labels"]["D"] for tmp in output_results]).cpu().detach().numpy()
+        # labels_S = torch.cat([tmp["labels"]["S"] for tmp in output_results]).cpu().detach().numpy()
         logits_N = torch.cat([tmp["predictions"]["N"] for tmp in output_results])
         logits_D = torch.cat([tmp["predictions"]["D"] for tmp in output_results])
         logits_S = torch.cat([tmp["predictions"]["S"] for tmp in output_results])
 
-        pred_N = np.argmax(logits_N.cpu().detach().numpy(), axis=-1)
-        pred_D = np.argmax(logits_D.cpu().detach().numpy(), axis=-1)
-        pred_S = np.argmax(logits_S.cpu().detach().numpy(), axis=-1)
+        pred_N = torch.argmax(logits_N, dim=-1)
+        pred_D = torch.argmax(logits_D, dim=-1)
+        pred_S = torch.argmax(logits_S, dim=-1)
 
-        labels_N = torch.cat([tmp["labels"]["N"] for tmp in output_results]).cpu().detach().numpy()
-        labels_D = torch.cat([tmp["labels"]["D"] for tmp in output_results]).cpu().detach().numpy()
-        labels_S = torch.cat([tmp["labels"]["S"] for tmp in output_results]).cpu().detach().numpy()
+        labels_N = torch.cat([tmp["labels"]["N"] for tmp in output_results])
+        labels_D = torch.cat([tmp["labels"]["D"] for tmp in output_results])
+        labels_S = torch.cat([tmp["labels"]["S"] for tmp in output_results])
 
-        N_classes = ["none", "rafa", "shva", "hataph segol", "hataph patah", "hataph kamats", "hirik", "chere", "segol",
-                     "phatah",
-                     "kamats", "hulam(full)", "hulam", "kubuch", "shuruk"]
+        self.final_acc_S = self.f1(pred_S, labels_S)
+        self.final_acc_D = self.f1(pred_D, labels_D)
+        self.final_acc_N = self.f1(pred_N, labels_N)
+
+        labels_N = labels_N.cpu().detach().numpy()
+        labels_D = labels_D.cpu().detach().numpy()
+        labels_S = labels_S.cpu().detach().numpy()
+
+        pred_N = pred_N.cpu().detach().numpy()
+        pred_D = pred_D.cpu().detach().numpy()
+        pred_S = pred_S.cpu().detach().numpy()
+
+        N_classes = ["none", "rafa", "shva", "hataph segol",
+                     "hataph patah", "hataph kamats",
+                     "hirik","chere", "segol", "phatah",
+                     "kamats", "hulam", "kubuch", "shuruk"]
         S_classes = ["NONE", "mask", "sin", "shin"]
         D_classes = ["NONE", "RAFE", "DAGESH"]
-
-        # self.log(value=cf_matrix_N, name="N Confusion Matrix")
-        # self.log(value=cf_matrix_D, name="D Confusion Matrix")
-        # self.log(value=cf_matrix_S, name="S Confusion Matrix")
-
-        # display confusion matrix
 
         plt.figure(figsize=(12, 7))
         ax = ConfusionMatrixDisplay.from_predictions(labels_N.flatten(), pred_N.flatten(),
@@ -158,11 +183,12 @@ class MenakBert(LightningModule):
                                                      # display_labels=["none"] + [name_of(char) for char in NIQQUD],
                                                      normalize="true")
         fig = plt.gcf()
+        fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
         self.logger.experiment.add_figure("N Confusion Matrix", fig)
         plt.close(fig)
 
         plt.figure(figsize=(12, 7))
-        ax = ConfusionMatrixDisplay.from_predictions(labels_D.flatten(), pred_D.flatten(),
+        ax = ConfusionMatrixDisplay.from_predictions(labels_D.cpu().detach().numpy().flatten(), pred_D.flatten(),
                                                      labels=[i for i in range(DAGESH_SIZE)],
                                                      display_labels=D_classes,
                                                      # display_labels=["none"] + [name_of(char) for char in DAGESH],
@@ -171,16 +197,26 @@ class MenakBert(LightningModule):
         self.logger.experiment.add_figure("D Confusion Matrix", fig)
         plt.close(fig)
 
+        fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
         plt.figure(figsize=(12, 7))
-        ax = ConfusionMatrixDisplay.from_predictions(labels_S.flatten(), pred_S.flatten(),
+        ax = ConfusionMatrixDisplay.from_predictions(labels_S.cpu().detach().numpy().flatten(), pred_S.flatten(),
                                                      labels=[i for i in range(SIN_SIZE)],
                                                      display_labels=S_classes,
                                                      # display_labels=["none"] + [name_of(char) for char in NIQQUD_SIN],
                                                      normalize="true")
-
         fig = plt.gcf()
+        fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
         self.logger.experiment.add_figure("S Confusion Matrix", fig)
         plt.close(fig)
+
+        # self.log('valid_acc_N', self.f1, on_step=True, on_epoch=True) todo check how to use on_step=True, on_epoch=True to make the loss comut
+        # self.log('valid_acc_S', self.valid_acc, on_step=True, on_epoch=True)
+        # self.log('valid_acc_D', self.valid_acc, on_step=True, on_epoch=True)
+
+        return {'train_epoch_f1_precision_S': self.final_acc_S,
+                'train_epoch_f1_precision_D': self.final_acc_D,
+                'train_epoch_f1_precision_N': self.final_acc_N,
+                }
 
 
 if __name__ == "__main__":

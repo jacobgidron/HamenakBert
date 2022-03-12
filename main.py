@@ -1,5 +1,7 @@
-import hydra
-from omegaconf import DictConfig
+# import hydra
+# from omegaconf import DictConfig
+import csv
+
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from torch.utils.data import DataLoader
@@ -16,6 +18,8 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
+
+from run_tests import CSV_HEAD
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 seed_everything(42, workers=True)
@@ -36,13 +40,13 @@ test_data = [TEST_PATH]
 DROPOUT = 0.1
 Train_BatchSize = 32
 LR = 1e-5
-MAX_EPOCHS = 100
+MAX_EPOCHS = 2
 MIN_EPOCHS = 5
 MAX_LEN = 100
 MIN_LEN = 10
 
 
-def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
+def setup_model(train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
                 val_batch_size, max_epochs, min_epochs, weighted_loss):
     # init data module
     if not os.path.exists("tavbert"):
@@ -96,6 +100,7 @@ def setup_model(base_path, train_data, val_data, test_data, model, maxlen, minle
                       weights=weights)
     return model, dm
 
+
 def setup_trainer():
     # config training
     checkpoint_callback = ModelCheckpoint(
@@ -106,8 +111,8 @@ def setup_trainer():
         monitor="train_loss",
         mode="min"
     )
-    logger = CSVLogger("lightning_csv_logs", name="nikkud_logs")
-    # logger = TensorBoardLogger("lightning_logs", name="nikkud_logs")
+    # logger = CSVLogger("lightning_csv_logs", name="nikkud_logs")
+    logger = TensorBoardLogger("lightning_logs", name="nikkud_logs")
     early_stopping_callback = EarlyStopping(monitor='train_loss', patience=5)
 
     trainer = Trainer(
@@ -115,7 +120,7 @@ def setup_trainer():
         # auto_lr_find=True,
         checkpoint_callback=checkpoint_callback,
         callbacks=[early_stopping_callback],
-        max_epochs=20,
+        max_epochs=MAX_EPOCHS,
         gpus=1,
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
@@ -145,6 +150,7 @@ def eval_model(trainer, dm, val_path, maxlen):
     mask = sample_batch["attention_mask"]
     _, predictions = trained_model(input, mask)
 
+
 # pred = np.argmax(predictions['N'].cpu().detach().numpy(), axis=-1)
 # labels = sample_batch["label"]['N'].cpu().detach().numpy()
 #
@@ -156,18 +162,18 @@ def eval_model(trainer, dm, val_path, maxlen):
 # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
 # plt.show()
 
-@hydra.main(config_path="config", config_name="config")
-def runModel(cfg: DictConfig):
-    model, dm = setup_model(cfg.base_path, cfg.dataset.train_path, cfg.dataset.val_path, cfg.dataset.test_path, MODEL,
-                            cfg.dataset.max_len, cfg.dataset.min_len, cfg.hyper_params.lr, cfg.hyper_params.dropout,
-                            cfg.hyper_params.train_batch_size, cfg.hyper_params.val_batch_size,
-                            cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs, cfg.hyper_params.weighted_loss)
-    trainer = setup_trainer()
-    # trainer.tune(model)
-    trainer.fit(model, dm)
-    trainer.test(model, dm)
+# @hydra.main(config_path="config", config_name="config")
+# def runModel(cfg: DictConfig):
+#     model, dm = setup_model(cfg.base_path, cfg.dataset.train_path, cfg.dataset.val_path, cfg.dataset.test_path, MODEL,
+#                             cfg.dataset.max_len, cfg.dataset.min_len, cfg.hyper_params.lr, cfg.hyper_params.dropout,
+#                             cfg.hyper_params.train_batch_size, cfg.hyper_params.val_batch_size,
+#                             cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs, cfg.hyper_params.weighted_loss)
+#     trainer = setup_trainer()
+#     # trainer.tune(model)
+#     trainer.fit(model, dm)
+#     trainer.test(model, dm)
 
-    #eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
+# eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
 
 def run_with_globals():
     model, dm = setup_model(train_data=train_data, val_data=val_data, test_data=test_data, model=MODEL, maxlen=MAX_LEN,
@@ -178,5 +184,47 @@ def run_with_globals():
     trainer.fit(model, dm)
     trainer.test(model, dm)
 
+
 if __name__ == '__main__':
-    runModel()
+    # run_with_globals()
+    params = {
+        "train_data": train_data,
+        "val_data": val_data,
+        "test_data": test_data,
+        "model": MODEL,
+        "maxlen": MAX_LEN,
+        "minlen": MIN_LEN,
+        "lr": LR,
+        "dropout": DROPOUT,
+        "train_batch_size": Train_BatchSize,
+        "val_batch_size": Val_BatchSize,
+        "max_epochs": MAX_EPOCHS,
+        "min_epochs": MIN_EPOCHS,
+        "weighted_loss": True
+    }
+
+    model, dm = setup_model(**params)
+    # model, dm = setup_model(train_data=train_data,
+    #                         val_data=val_data,
+    #                         test_data=test_data,
+    #                         model=MODEL,
+    #                         maxlen=MAX_LEN,
+    #                         minlen=MIN_LEN,
+    #                         lr=LR,
+    #                         dropout=DROPOUT,
+    #                         train_batch_size=Train_BatchSize,
+    #                         val_batch_size=Val_BatchSize,
+    #                         max_epochs=MAX_EPOCHS,
+    #                         min_epochs=MIN_EPOCHS,
+    #                         weighted_loss=True)
+    trainer = setup_trainer()
+    trainer.fit(model, dm)
+    trainer.test(model, dm)
+    with open("result_tabel.csv", "a") as f:
+        # writer = csv.writer(f)
+        fin = params.copy()
+        fin["acc_S"] = model.final_acc_S
+        fin["acc_D"] = model.final_acc_D
+        fin["acc_N"] = model.final_acc_N
+        writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
+        writer.writerow(params)

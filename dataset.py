@@ -39,7 +39,7 @@ LETTERS_SIZE = len(letters_table)
 NIQQUD_SIZE = len(niqqud_table)
 DAGESH_SIZE = len(dagesh_table)
 SIN_SIZE = len(sin_table)
-
+PAD_INDEX = 20 #TODO check if to move to main or to config file
 # A dictionary that converts a triplet (niqqud, dagesh, sin) into a unique ID for the triplet
 niqqud_to_id_dict = {}
 
@@ -87,7 +87,7 @@ def merge(texts, tnss, nss, dss, sss):
 class textDataset(Dataset):
     def __init__(self, base_paths, maxlen, minlen, tokenizer):
 
-        def pad(ords, dtype='int32', value=-1):
+        def pad(ords, dtype='int32', value=PAD_INDEX):
             return utils.pad_sequences(ords, maxlen=maxlen, dtype=dtype, value=value)
 
         self.labels = []
@@ -117,9 +117,9 @@ class textDataset(Dataset):
                 self.labels.append({'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]})
                 self.text.append("".join(normalized[i]))
 
-        self.counter['N'].pop(-1)
-        self.counter['D'].pop(-1)
-        self.counter['S'].pop(-1)
+        self.counter['N'].pop(PAD_INDEX)
+        self.counter['D'].pop(PAD_INDEX)
+        self.counter['S'].pop(PAD_INDEX)
             # y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
             # for i in range(len(niqqud)):
             #     for j in range(len(niqqud[i])):

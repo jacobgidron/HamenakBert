@@ -1,9 +1,34 @@
+import csv
+
 import hydra
 from omegaconf import DictConfig
 import os
 
+CSV_HEAD = [
+    "train_data",
+    "val_data",
+    "test_data",
+    "model",
+    "maxlen",
+    "minlen",
+    "lr",
+    "dropout",
+    "train_batch_size",
+    "val_batch_size",
+    "max_epochs",
+    "min_epochs",
+    "weighted_loss",
+    "acc_S",
+    "acc_D",
+    "acc_N",
+]
+
 @hydra.main(config_path="config", config_name="config")
 def run_test(cfg: DictConfig):
+
+    with open("result_tabel.csv", "a") as f:
+        writer = csv.writer(f)
+        writer.writerow(CSV_HEAD)
     main_dir = hydra.utils.get_original_cwd()
     create_slurm(main_dir)
 
@@ -22,6 +47,7 @@ def create_slurm(main_path):
     f.write(f"python {main_path}/main.py base_path={main_path}")
     f.close()
     # os.system("sbatch menakbert_job.slurm")
+
 
 if __name__ == '__main__':
     run_test()
