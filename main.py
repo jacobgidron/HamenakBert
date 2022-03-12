@@ -1,7 +1,6 @@
-# import hydra
-# from omegaconf import DictConfig
+import hydra
+from omegaconf import DictConfig
 import csv
-
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 from torch.utils.data import DataLoader
@@ -11,7 +10,6 @@ from MenakBert import MenakBert
 from dataset import textDataset
 from pytorch_lightning import Trainer, seed_everything
 from sklearn.metrics import confusion_matrix
-import seaborn as sn
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,41 +25,41 @@ seed_everything(42, workers=True)
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
 
-TRAIN_PATH = 'hebrew_diacritized/train'
-VAL_PATH = 'hebrew_diacritized/validation'
-TEST_PATH = 'hebrew_diacritized/test_modern'
-TRAIN_PATH = r"hebrew_diacritized/check/train"
-VAL_PATH = "hebrew_diacritized/check/val"
-TEST_PATH = "hebrew_diacritized/check/test"
-Val_BatchSize = 32
-train_data = [TRAIN_PATH]
-val_data = [VAL_PATH]
-test_data = [TEST_PATH]
-DROPOUT = 0.1
-Train_BatchSize = 32
-LR = 1e-5
-MAX_EPOCHS = 2
-MIN_EPOCHS = 5
-MAX_LEN = 100
-MIN_LEN = 10
+# TRAIN_PATH = 'hebrew_diacritized/train'
+# VAL_PATH = 'hebrew_diacritized/validation'
+# TEST_PATH = 'hebrew_diacritized/test_modern'
+# TRAIN_PATH = r"hebrew_diacritized/check/train"
+# VAL_PATH = "hebrew_diacritized/check/val"
+# TEST_PATH = "hebrew_diacritized/check/test"
+# Val_BatchSize = 32
+# train_data = [TRAIN_PATH]
+# val_data = [VAL_PATH]
+# test_data = [TEST_PATH]
+# DROPOUT = 0.1
+# Train_BatchSize = 32
+# LR = 1e-5
+# MAX_EPOCHS = 100
+# MIN_EPOCHS = 5
+# MAX_LEN = 100
+# MIN_LEN = 10
 
 
-def setup_model(train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
+def setup_model(base_path, train_data, val_data, test_data, maxlen, minlen, lr, dropout, train_batch_size,
                 val_batch_size, max_epochs, min_epochs, weighted_loss):
     # init data module
-    if not os.path.exists("tavbert"):
-        os.mkdir("tavbert")
+    if not os.path.exists(MODEL):
+        os.mkdir(MODEL)
         gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing",
-                              output="tavbert")
+                              output=MODEL)
 
     dm = HebrewDataModule(
-        # train_paths=base_path + '/' + train_data,
-        # val_path=base_path + '/' + val_data,
-        # test_paths=base_path + '/' + test_data,
-        train_paths=train_data,
-        val_path=val_data,
-        test_paths=test_data,
-        model=model,
+        train_paths=[base_path + '/' + path for path in train_data],
+        val_path=[base_path + '/' + path for path in val_data],
+        test_paths=[base_path + '/' + path for path in test_data],
+        # train_paths=train_data,
+        # val_path=val_data,
+        # test_paths=test_data,
+        model=MODEL,
         max_seq_length=maxlen,
         min_seq_length=minlen,
         train_batch_size=train_batch_size,
@@ -89,7 +87,7 @@ def setup_model(train_data, val_data, test_data, model, maxlen, minlen, lr, drop
     warmup_steps = total_training_steps // 5
 
     # init module
-    model = MenakBert(model=model,
+    model = MenakBert(model=MODEL,
                       dropout=dropout,
                       train_batch_size=train_batch_size,
                       lr=lr,
@@ -101,7 +99,7 @@ def setup_model(train_data, val_data, test_data, model, maxlen, minlen, lr, drop
     return model, dm
 
 
-def setup_trainer():
+def setup_trainer(max_epochs):
     # config training
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints",
@@ -120,7 +118,7 @@ def setup_trainer():
         # auto_lr_find=True,
         checkpoint_callback=checkpoint_callback,
         callbacks=[early_stopping_callback],
-        max_epochs=MAX_EPOCHS,
+        max_epochs=max_epochs,
         gpus=1,
         progress_bar_refresh_rate=1,
         log_every_n_steps=1
@@ -162,65 +160,35 @@ def eval_model(trainer, dm, val_path, maxlen):
 # fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
 # plt.show()
 
-# @hydra.main(config_path="config", config_name="config")
-# def runModel(cfg: DictConfig):
-#     model, dm = setup_model(cfg.base_path, cfg.dataset.train_path, cfg.dataset.val_path, cfg.dataset.test_path, MODEL,
-#                             cfg.dataset.max_len, cfg.dataset.min_len, cfg.hyper_params.lr, cfg.hyper_params.dropout,
-#                             cfg.hyper_params.train_batch_size, cfg.hyper_params.val_batch_size,
-#                             cfg.hyper_params.max_epochs, cfg.hyper_params.min_epochs, cfg.hyper_params.weighted_loss)
-#     trainer = setup_trainer()
-#     # trainer.tune(model)
-#     trainer.fit(model, dm)
-#     trainer.test(model, dm)
+@hydra.main(config_path="config", config_name="config")
+def runModel(cfg: DictConfig):
+    MODEL = f"{cfg.base_path}/tavbert"
 
-# eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
-
-def run_with_globals():
-    model, dm = setup_model(train_data=train_data, val_data=val_data, test_data=test_data, model=MODEL, maxlen=MAX_LEN,
-                            minlen=MIN_LEN, lr=LR, dropout=DROPOUT, train_batch_size=Train_BatchSize,
-                            val_batch_size=Val_BatchSize, max_epochs=MAX_EPOCHS, min_epochs=MIN_EPOCHS,
-                            weighted_loss=True)
-    trainer = setup_trainer()
-    trainer.fit(model, dm)
-    trainer.test(model, dm)
-
-
-if __name__ == '__main__':
-    # run_with_globals()
+    # all model params from the CFG
     params = {
-        "train_data": train_data,
-        "val_data": val_data,
-        "test_data": test_data,
+        "train_data": [cfg.dataset.train_path],
+        "val_data": [cfg.dataset.val_path],
+        "test_data": [cfg.dataset.test_path],
         "model": MODEL,
-        "maxlen": MAX_LEN,
-        "minlen": MIN_LEN,
-        "lr": LR,
-        "dropout": DROPOUT,
-        "train_batch_size": Train_BatchSize,
-        "val_batch_size": Val_BatchSize,
-        "max_epochs": MAX_EPOCHS,
-        "min_epochs": MIN_EPOCHS,
-        "weighted_loss": True
+        "maxlen": cfg.dataset.max_len,
+        "minlen": cfg.dataset.min_len,
+        "lr": cfg.hyper_params.lr,
+        "dropout": cfg.hyper_params.dropout,
+        "train_batch_size": cfg.hyper_params.train_batch_size,
+        "val_batch_size": cfg.hyper_params.val_batch_size,
+        "max_epochs": cfg.hyper_params.max_epochs,
+        "min_epochs": cfg.hyper_params.min_epochs,
+        "weighted_loss": cfg.hyper_params.weighted_loss,
+        "path": os.getcwd()
     }
 
-    model, dm = setup_model(**params)
-    # model, dm = setup_model(train_data=train_data,
-    #                         val_data=val_data,
-    #                         test_data=test_data,
-    #                         model=MODEL,
-    #                         maxlen=MAX_LEN,
-    #                         minlen=MIN_LEN,
-    #                         lr=LR,
-    #                         dropout=DROPOUT,
-    #                         train_batch_size=Train_BatchSize,
-    #                         val_batch_size=Val_BatchSize,
-    #                         max_epochs=MAX_EPOCHS,
-    #                         min_epochs=MIN_EPOCHS,
-    #                         weighted_loss=True)
-    trainer = setup_trainer()
+    model, dm = setup_model(cfg.base_path, **params)
+    trainer = setup_trainer(params['max_epochs'])
+    # trainer.tune(model)
     trainer.fit(model, dm)
     trainer.test(model, dm)
-    with open("result_tabel.csv", "a") as f:
+
+    with open(f"{cfg.base_path}/result_tabel.csv", "a") as f:
         # writer = csv.writer(f)
         fin = params.copy()
         fin["acc_S"] = model.final_acc_S
@@ -228,3 +196,65 @@ if __name__ == '__main__':
         fin["acc_N"] = model.final_acc_N
         writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
         writer.writerow(params)
+
+
+
+
+# eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
+
+# def run_with_globals():
+#     model, dm = setup_model(train_data=train_data, val_data=val_data, test_data=test_data, maxlen=MAX_LEN,
+#                             minlen=MIN_LEN, lr=LR, dropout=DROPOUT, train_batch_size=Train_BatchSize,
+#                             val_batch_size=Val_BatchSize, max_epochs=MAX_EPOCHS, min_epochs=MIN_EPOCHS,
+#                             weighted_loss=True)
+#     trainer = setup_trainer()
+#     trainer.fit(model, dm)
+#     trainer.test(model, dm)
+
+
+if __name__ == '__main__':
+    runModel()
+
+
+    # # run_with_globals()
+    # params = {
+    #     "train_data": train_data,
+    #     "val_data": val_data,
+    #     "test_data": test_data,
+    #     "model": MODEL,
+    #     "maxlen": MAX_LEN,
+    #     "minlen": MIN_LEN,
+    #     "lr": LR,
+    #     "dropout": DROPOUT,
+    #     "train_batch_size": Train_BatchSize,
+    #     "val_batch_size": Val_BatchSize,
+    #     "max_epochs": MAX_EPOCHS,
+    #     "min_epochs": MIN_EPOCHS,
+    #     "weighted_loss": True
+    # }
+    #
+    # model, dm = setup_model(**params)
+    # # model, dm = setup_model(train_data=train_data,
+    # #                         val_data=val_data,
+    # #                         test_data=test_data,
+    # #                         model=MODEL,
+    # #                         maxlen=MAX_LEN,
+    # #                         minlen=MIN_LEN,
+    # #                         lr=LR,
+    # #                         dropout=DROPOUT,
+    # #                         train_batch_size=Train_BatchSize,
+    # #                         val_batch_size=Val_BatchSize,
+    # #                         max_epochs=MAX_EPOCHS,
+    # #                         min_epochs=MIN_EPOCHS,
+    # #                         weighted_loss=True)
+    # trainer = setup_trainer()
+    # trainer.fit(model, dm)
+    # trainer.test(model, dm)
+    # with open("result_tabel.csv", "a") as f:
+    #     # writer = csv.writer(f)
+    #     fin = params.copy()
+    #     fin["acc_S"] = model.final_acc_S
+    #     fin["acc_D"] = model.final_acc_D
+    #     fin["acc_N"] = model.final_acc_N
+    #     writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
+    #     writer.writerow(params)
