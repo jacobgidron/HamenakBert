@@ -1,7 +1,10 @@
 from collections import Counter
 
 import numpy as np
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
+from transformers import AutoTokenizer
+
+import metrics
 import pre_processing
 import utils
 
@@ -24,7 +27,7 @@ class CharacterTable:
         ]
 
     def to_niqud(self, cs):
-        return [self.indices_char[c] for c in cs]
+        return [self.indices_char[cs[i].item()] for i in range(cs.size(dim=0))]
 
     def __repr__(self):
         return repr(self.chars)
@@ -174,7 +177,13 @@ if __name__ == '__main__':
     # print(res)
     # train_dict = {}
     # train_dict["test"] = get_xy(load_data(tuple(['train1.txt', 'train2.txt']), maxlen=16).shuffle())
-    testData = textDataset(tuple(["hebrew_diacritized/train/modern/shortstoryproject_Dicta"]), 100, 10, None)
+    test_data = textDataset(tuple(["hebrew_diacritized/train/modern/law"]), 100, 10, AutoTokenizer.from_pretrained('tavbert', use_fast=True))
+    loader = DataLoader(test_data, shuffle=True)
+    sample_batch = next(iter(loader))
+    text = metrics.format_output_y1(sample_batch['input_ids'].squeeze(),sample_batch['label']['N'].squeeze(),sample_batch['label']['D'].squeeze(),sample_batch['label']['S'].squeeze())
+    input = sample_batch["input_ids"]
+    mask = sample_batch["attention_mask"]
+    # _, predictions = model(input, mask)
     x = 5
 
     # print_tables()

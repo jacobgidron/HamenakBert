@@ -4,8 +4,8 @@ from dataclasses import dataclass
 import numpy as np
 from transformers import AutoTokenizer
 
-from MenakBert import MODEL
 import dataset
+import main
 import pre_processing
 
 
@@ -219,7 +219,11 @@ def all_failed():
 from dataset import niqqud_table, dagesh_table, sin_table
 
 def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin):
-    tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(main.MODEL, use_fast=True)
+    pad_text = pad_text.squeeze()
+    pad_niqqud = pad_niqqud.squeeze()
+    pad_dagesh = pad_dagesh.squeeze()
+    pad_sin = pad_sin.squeeze()
     # find the index where we start padding
     pad_index = 0
     for i in range(pad_text.size(dim=0)):
@@ -229,7 +233,7 @@ def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin):
 
     # decode unpadded text
     coded_text = pad_text[1:pad_index]
-    text = tokenizer.decode(coded_text,clean_up_tokenization_spaces=True)
+    text = tokenizer.decode(coded_text,clean_up_tokenization_spaces=False)
 
     # remove padding
     niqqud = niqqud_table.to_niqud(pad_niqqud[1:pad_index])
