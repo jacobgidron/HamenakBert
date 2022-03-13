@@ -1,5 +1,8 @@
+import cProfile
+import pstats
+
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import csv
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
@@ -25,6 +28,7 @@ seed_everything(42, workers=True)
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
 
+
 # TRAIN_PATH = 'hebrew_diacritized/train'
 # VAL_PATH = 'hebrew_diacritized/validation'
 # TEST_PATH = 'hebrew_diacritized/test_modern'
@@ -45,7 +49,8 @@ MODEL = "tavbert"
 
 
 def setup_model(base_path, train_data, val_data, test_data, maxlen, minlen, lr, dropout, train_batch_size,
-                val_batch_size, max_epochs, min_epochs, weighted_loss):
+                val_batch_size, max_epochs, min_epochs, weighted_loss, **kwargs):
+    print(MODEL)
     # init data module
     if not os.path.exists(MODEL):
         os.mkdir(MODEL)
@@ -121,7 +126,7 @@ def setup_trainer(max_epochs):
         max_epochs=max_epochs,
         gpus=1,
         progress_bar_refresh_rate=1,
-        log_every_n_steps=1
+        log_every_n_steps=100
     )
     return trainer
 
@@ -149,6 +154,12 @@ def eval_model(trainer, dm, val_path, maxlen):
     _, predictions = trained_model(input, mask)
 
 
+
+# def create_testfiles(model, test_path, tokenizer):
+
+
+
+
 # pred = np.argmax(predictions['N'].cpu().detach().numpy(), axis=-1)
 # labels = sample_batch["label"]['N'].cpu().detach().numpy()
 #
@@ -162,17 +173,21 @@ def eval_model(trainer, dm, val_path, maxlen):
 
 @hydra.main(config_path="config", config_name="config")
 def runModel(cfg: DictConfig):
+    os.environ['TOKENIZERS_PARALLELISM']='true'
     MODEL = f"{cfg.base_path}/tavbert"
+    print(OmegaConf.to_yaml(cfg))
+
+    print(os.getcwd())
 
     # all model params from the CFG
     params = {
         "train_data": [cfg.dataset.train_path],
         "val_data": [cfg.dataset.val_path],
         "test_data": [cfg.dataset.test_path],
-        "model": MODEL,
         "maxlen": cfg.dataset.max_len,
         "minlen": cfg.dataset.min_len,
         "lr": cfg.hyper_params.lr,
+        'model': MODEL,
         "dropout": cfg.hyper_params.dropout,
         "train_batch_size": cfg.hyper_params.train_batch_size,
         "val_batch_size": cfg.hyper_params.val_batch_size,
@@ -185,7 +200,10 @@ def runModel(cfg: DictConfig):
     model, dm = setup_model(cfg.base_path, **params)
     trainer = setup_trainer(params['max_epochs'])
     # trainer.tune(model)
-    trainer.fit(model, dm)
+    with cProfile.Profile() as pr:
+        trainer.fit(model, dm)
+    stat = pstats.Stats(pr)
+    stat.dump_stats(filename="run_time.prof")
     trainer.test(model, dm)
 
     with open(f"{cfg.base_path}/result_tabel.csv", "a") as f:
@@ -194,10 +212,9 @@ def runModel(cfg: DictConfig):
         fin["acc_S"] = model.final_acc_S
         fin["acc_D"] = model.final_acc_D
         fin["acc_N"] = model.final_acc_N
+
         writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
-        writer.writerow(params)
-
-
+        writer.writerow(fin)
 
 
 # eval_model(complete_trainer, dm, cfg.datset.val_path, cfg.dataset.max_len)
@@ -214,7 +231,6 @@ def runModel(cfg: DictConfig):
 
 if __name__ == '__main__':
     runModel()
-
 
     # # run_with_globals()
     # params = {
