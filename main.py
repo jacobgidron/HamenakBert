@@ -150,7 +150,7 @@ def test_by_file(model, trainer, test_path, target_dir, tokenizer, max_len, min_
             preds = torch.argmax(preds, dim=-1)
             with open(curr_out, 'a', encoding='utf8') as f:
                 for sent in range(len(val_dataset)):
-                    line = format_output_y1(val_dataset[sent], preds['N'][sent], preds['D'][sent], preds['S'][sent])
+                    line = format_output_y1(val_dataset[sent], preds['N'][sent], preds['D'][sent], preds['S'][sent], tokenizer)
                     f.write(f'{line}\n')
 
 
