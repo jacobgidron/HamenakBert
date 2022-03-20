@@ -5,7 +5,6 @@ import numpy as np
 from transformers import AutoTokenizer
 
 import dataset
-import main
 import pre_processing
 
 
@@ -218,8 +217,9 @@ def all_failed():
 
 from dataset import niqqud_table, dagesh_table, sin_table
 
-def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin):
-    tokenizer = AutoTokenizer.from_pretrained(main.MODEL, use_fast=True)
+
+def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin , model_path):
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
     pad_text = pad_text.squeeze()
     pad_niqqud = pad_niqqud.squeeze()
     pad_dagesh = pad_dagesh.squeeze()
@@ -245,6 +245,32 @@ def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin):
         diacritization = ''.join((text[2*i], niqqud[i], dagesh[i], sin[i]))
         output = ''.join((output, diacritization))
     return output.replace(pre_processing.RAFE, '')
+
+
+def better_format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin):
+    tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=True)
+    # find the index where we start padding
+    rez = []
+    pad_niqqud[pad_niqqud == 0] = 1
+    pad_dagesh[pad_dagesh == 0] = 1
+    pad_sin[pad_sin == 0] = 1
+    for i in range(pad_text.shape[0]):
+        non_pad = pad_niqqud != 20
+
+        text = tokenizer.decode(pad_text.squeeze(), skip_special_tokens=True)
+        out_text = [text[j] +
+                    niqqud_table.indices_char[pad_niqqud[i][j//2].item()-1] +
+                    dagesh_table.indices_char[pad_dagesh[i][j//2].item()-1] +
+                    sin_table.indices_char[pad_sin[i][j//2].item()-1]
+                    for j in range(len(text)*2,2)]
+        rez.append(out_text)
+
+    # decode unpadded text
+    # text = tokenizer.decode(coded_text, clean_up_tokenization_spaces=True)
+
+    # remove padding
+
+    return rez
 
 
 def format_output_y2(text, y2) -> str:

@@ -97,6 +97,7 @@ class MenakBert(LightningModule):
         logits_S = torch.cat([tmp["predictions"]["S"] for tmp in output_results])
 
         pred_N = torch.argmax(logits_N, dim=-1)
+
         pred_D = torch.argmax(logits_D, dim=-1)
         pred_S = torch.argmax(logits_S, dim=-1)
 
