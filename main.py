@@ -1,6 +1,5 @@
 import cProfile
 import pstats
-import sys
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
