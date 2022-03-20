@@ -54,13 +54,13 @@ class HebrewDataModule(LightningDataModule):
         )
 
     def train_dataloader(self):
-        return DataLoader(self.train_data, batch_size=self.train_batch_size, shuffle=True)
+        return DataLoader(self.train_data, batch_size=self.train_batch_size, num_workers=12, shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_data, batch_size=self.val_batch_size)
+        return DataLoader(self.val_data, batch_size=self.val_batch_size, num_workers=12)
 
     def test_dataloader(self):
-        return DataLoader(self.test_data, batch_size=self.val_batch_size)
+        return DataLoader(self.test_data, batch_size=self.val_batch_size, num_workers=12)
 
 
 
