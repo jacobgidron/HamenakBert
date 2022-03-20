@@ -4,7 +4,6 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer
 
-import metrics
 import pre_processing
 import utils
 
@@ -180,7 +179,7 @@ if __name__ == '__main__':
     test_data = textDataset(tuple(["hebrew_diacritized/train/modern/law"]), 100, 10, AutoTokenizer.from_pretrained('tavbert', use_fast=True))
     loader = DataLoader(test_data, shuffle=True)
     sample_batch = next(iter(loader))
-    text = metrics.format_output_y1(sample_batch['input_ids'].squeeze(),sample_batch['label']['N'].squeeze(),sample_batch['label']['D'].squeeze(),sample_batch['label']['S'].squeeze())
+    # text = metrics.format_output_y1(sample_batch['input_ids'].squeeze(),sample_batch['label']['N'].squeeze(),sample_batch['label']['D'].squeeze(),sample_batch['label']['S'].squeeze())
     input = sample_batch["input_ids"]
     mask = sample_batch["attention_mask"]
     # _, predictions = model(input, mask)

@@ -2,10 +2,10 @@ import typing
 from pathlib import Path
 from dataclasses import dataclass
 import numpy as np
+from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
 import dataset
-import main
 import pre_processing
 
 
@@ -218,8 +218,7 @@ def all_failed():
 
 from dataset import niqqud_table, dagesh_table, sin_table
 
-def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin):
-    tokenizer = AutoTokenizer.from_pretrained(main.MODEL, use_fast=True)
+def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin, tokenizer):
     pad_text = pad_text.squeeze()
     pad_niqqud = pad_niqqud.squeeze()
     pad_dagesh = pad_dagesh.squeeze()
@@ -256,10 +255,10 @@ def format_output_y2(text, y2) -> str:
 
 
 if __name__ == '__main__':
-    basepath = Path('tests/dicta/expected')
-    all_stats(
-        'Snopi',
-        'Dicta',
-        'Nakdimon0',
-        # 'Nakdimon',
-    )
+    test_data = dataset.textDataset(tuple(["hebrew_diacritized/train/modern/law"]), 100, 10,
+                                    AutoTokenizer.from_pretrained('tavbert', use_fast=True))
+    loader = DataLoader(test_data, shuffle=True)
+    sample_batch = next(iter(loader))
+    # text = metrics.format_output_y1(sample_batch['input_ids'].squeeze(),sample_batch['label']['N'].squeeze(),sample_batch['label']['D'].squeeze(),sample_batch['label']['S'].squeeze())
+    input = sample_batch["input_ids"]
+    mask = sample_batch["attention_mask"]
