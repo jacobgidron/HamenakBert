@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
+from metrics import format_output_y1
 
 from run_tests import CSV_HEAD
 
@@ -129,6 +130,33 @@ def setup_trainer(max_epochs):
         log_every_n_steps=100
     )
     return trainer
+
+
+def test_by_file(model, trainer, test_path, target_dir, tokenizer, max_len, min_len):
+    trained_model = MenakBert.load_from_checkpoint(
+        trainer.checkpoint_callback.best_model_path,
+    )
+    trained_model.freeze()
+    model.freeze()
+    if not os.path.exists(target_dir):
+        os.mkdir(target_dir)
+    for root, dirs, files in os.walk(test_path):
+        for name in files:
+            curr_in = os.path.join(root, name)
+            curr_out = os.path.join(target_dir, name)
+            val_dataset = textDataset(
+                [curr_in],
+                max_len,
+                min_len,
+                tokenizer
+            )
+            loader = DataLoader(val_dataset, batch_size=100, num_workers=40)
+            preds = trainer.predict(model=trained_model, dataloaders=loader, return_predictions=True)
+            preds = torch.argmax(preds, dim=-1)
+            with open(curr_out, 'a', encoding='utf8') as f:
+                for sent in range(len(val_dataset)):
+                    line = format_output_y1(val_dataset[sent], preds['N'][sent], preds['D'][sent], preds['S'][sent])
+                    f.write(f'{line}\n')
 
 
 def eval_model(trainer, dm, val_path, maxlen):
