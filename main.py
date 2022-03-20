@@ -5,18 +5,13 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 import csv
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 import torch
 from HebrewDataModule import HebrewDataModule
 from MenakBert import MenakBert
 from dataset import textDataset
 from pytorch_lightning import Trainer, seed_everything
-from sklearn.metrics import confusion_matrix
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
 from metrics import format_output_y1
@@ -202,6 +197,7 @@ def eval_model(trainer, dm, val_path, maxlen):
 @hydra.main(config_path="config", config_name="config")
 def runModel(cfg: DictConfig):
     os.environ['TOKENIZERS_PARALLELISM']='true'
+    global MODEL
     MODEL = f"{cfg.base_path}/tavbert"
     print(OmegaConf.to_yaml(cfg))
 
@@ -215,7 +211,6 @@ def runModel(cfg: DictConfig):
         "maxlen": cfg.dataset.max_len,
         "minlen": cfg.dataset.min_len,
         "lr": cfg.hyper_params.lr,
-        'model': MODEL,
         "dropout": cfg.hyper_params.dropout,
         "train_batch_size": cfg.hyper_params.train_batch_size,
         "val_batch_size": cfg.hyper_params.val_batch_size,
