@@ -49,7 +49,7 @@ class MenakBert(LightningModule):
         n = self.linear_N(last_hidden_state)
         d = self.linear_D(last_hidden_state)
         s = self.linear_S(last_hidden_state)
-        output = dict(N=n, D=d, S=s, L=last_hidden_state)
+        output = dict(N=n, D=d, S=s)
 
         loss = 0
         if label is not None:
