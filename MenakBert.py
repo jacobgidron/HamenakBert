@@ -110,12 +110,12 @@ class MenakBert(LightningModule):
         pec_S = self.f1(pred_S, labels_S)
         pec_D = self.f1(pred_D, labels_D)
         pec_N = self.f1(pred_N, labels_N)
-        self.log('train_epoch_f1_precision_S', pec_S, prog_bar=True, logger=True)
-        self.log('train_epoch_f1_precision_D', pec_D, prog_bar=True, logger=True)
-        self.log('train_epoch_f1_precision_N', pec_N, prog_bar=True, logger=True)
-        return {'train_epoch_f1_precision_S': pec_S,
-                'train_epoch_f1_precision_D': pec_D,
-                'train_epoch_f1_precision_N': pec_N,
+        self.log('f1_score_S', pec_S, prog_bar=True, logger=True)
+        self.log('f1_score_D', pec_D, prog_bar=True, logger=True)
+        self.log('f1_score_N', pec_N, prog_bar=True, logger=True)
+        return {'f1_score_S': pec_S,
+                'f1_score_D': pec_D,
+                'f1_score_N': pec_N,
                 }
 
     def validation_step(self, batch, batch_idx):

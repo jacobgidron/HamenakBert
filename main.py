@@ -116,10 +116,10 @@ def setup_trainer(max_epochs):
         filename="best-checkpoint",
         save_top_k=1,
         verbose=True,
-        monitor="train_loss",
-        mode="min"
+        monitor="f1_score_N",
+        mode="max"
     )
-    # logger = CSVLogger("lightning_csv_logs", name="nikkud_logs")
+
     logger = TensorBoardLogger("lightning_logs", name="nikkud_logs")
     early_stopping_callback = EarlyStopping(monitor='train_loss', patience=5)
 
@@ -303,4 +303,4 @@ if __name__ == '__main__':
         fin["acc_N"] = model.final_acc_N.item()
         writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
         writer.writerow(fin)
-    compare_by_file(trainer, r"hebrew_diacritized/check", "ido_cool_guy", dm.tokenizer, 100, 5)
+    # compare_by_file(trainer, r"hebrew_diacritized/check", "ido_cool_guy", dm.tokenizer, 100, 5)
