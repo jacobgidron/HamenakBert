@@ -3,6 +3,7 @@ from pathlib import Path
 from dataclasses import dataclass
 import numpy as np
 from transformers import AutoTokenizer
+from typing import List, Dict
 
 import dataset
 import pre_processing
@@ -17,13 +18,13 @@ class Document:
     def sentences(self):
         return [sent + '.' for sent in self.text.split('. ') if len(pre_processing.remove_niqqud(sent)) > 15]
 
-    def hebrew_items(self) -> list[pre_processing.HebrewItem]:
+    def hebrew_items(self) -> List[pre_processing.HebrewItem]:
         return list(pre_processing.iterate_dotted_text(self.text))
 
-    def tokens(self) -> list[pre_processing.Token]:
+    def tokens(self) -> List[pre_processing.Token]:
         return pre_processing.tokenize(self.hebrew_items())
 
-    def vocalized_tokens(self) -> list[pre_processing.Token]:
+    def vocalized_tokens(self) -> List[pre_processing.Token]:
         return [x.vocalize() for x in self.tokens()]
 
 
@@ -31,7 +32,7 @@ class Document:
 class DocumentPack:
     source: str
     name: str
-    docs: dict[str, Document]
+    docs: Dict[str, Document]
 
     def __getitem__(self, item):
         return self.docs[item]
@@ -63,7 +64,7 @@ def iter_documents(*systems) -> typing.Iterator[DocumentPack]:
             yield read_document_pack(path_to_expected, *systems)
 
 
-def iter_documents_by_folder(*systems) -> typing.Iterator[list[DocumentPack]]:
+def iter_documents_by_folder(*systems) -> typing.Iterator[List[DocumentPack]]:
     for folder in basepath.iterdir():
         yield [read_document_pack(path_to_expected, *systems) for path_to_expected in folder.iterdir()]
 
@@ -218,8 +219,7 @@ def all_failed():
 from dataset import niqqud_table, dagesh_table, sin_table
 
 
-def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin , model_path):
-    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
+def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin, tokenizer):
     pad_text = pad_text.squeeze()
     pad_niqqud = pad_niqqud.squeeze()
     pad_dagesh = pad_dagesh.squeeze()
@@ -282,10 +282,19 @@ def format_output_y2(text, y2) -> str:
 
 
 if __name__ == '__main__':
-    basepath = Path('tests/dicta/expected')
-    all_stats(
-        'Snopi',
-        'Dicta',
-        'Nakdimon0',
-        # 'Nakdimon',
-    )
+    with open(r'ido_cool_guy/1.txt', 'r', encoding='utf8') as f:
+        txt_a = f.read()
+    with open(r'hebrew_diacritized/check/test/1.txt', 'r', encoding='utf8') as f:
+        txt_b = f.read()
+    a = list(pre_processing.iterate_dotted_text(txt_a))
+    b = list(pre_processing.iterate_dotted_text(txt_b))
+    acc = mean_equal((x, y) for x, y in zip(a, b) if pre_processing.can_any(x.letter))
+    print(acc)
+    # basepath = Path('tests/dicta/expected')
+    # all_stats(
+    #     'Snopi',
+    #     'Dicta',
+    #     'Nakdimon0',
+    #     # 'Nakdimon',
+    # )
+
