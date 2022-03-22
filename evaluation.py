@@ -31,25 +31,28 @@ def compare_by_file(
                 min_len,
                 tokenizer
             )
-            loader = DataLoader(val_dataset, batch_size=100, num_workers=12)
+            loader = DataLoader(val_dataset, batch_size=32, num_workers=8)
 
-            with open(curr_out, 'a', encoding='utf8') as f:
-                for batch in loader:
-                    _, preds = trained_model(batch['input_ids'], batch['attention_mask'])
-                    preds['N'] = torch.argmax(preds['N'], dim=-1)
-                    preds['D'] = torch.argmax(preds['D'], dim=-1)
-                    preds['S'] = torch.argmax(preds['S'], dim=-1)
-                    for sent in range(len(preds['N'])):
-                        line = format_output_y1(val_dataset[sent]['input_ids'], preds['N'][sent], preds['D'][sent], preds['S'][sent], tokenizer)
-                        f.write(f'{line}\n')
-            with open(curr_pre, 'a', encoding='utf8') as f:
-                for sent in range(len(val_dataset)):
-                    line = format_output_y1(val_dataset[sent]['input_ids'],
-                                            val_dataset[sent]['label']['N'],
-                                            val_dataset[sent]['label']['D'],
-                                            val_dataset[sent]['label']['S'],
-                                            tokenizer)
-                    f.write(f'{line}\n')
+            with open(curr_out, 'a', encoding='utf8') as f_out:
+                with open(curr_pre, 'a', encoding='utf8') as f_pro:
+                    for batch in loader:
+                        _, preds = trained_model(batch['input_ids'], batch['attention_mask'])
+                        preds['N'] = torch.argmax(preds['N'], dim=-1)
+                        preds['D'] = torch.argmax(preds['D'], dim=-1)
+                        preds['S'] = torch.argmax(preds['S'], dim=-1)
+
+                        for sent in range(len(preds['N'])):
+                            line_out = format_output_y1(batch['input_ids'][sent], preds['N'][sent], preds['D'][sent], preds['S'][sent], tokenizer)
+                            f_out.write(f'{line_out}\n')
+                            line_pro = format_output_y1(batch['input_ids'][sent], batch['label']['N'][sent], batch['label']['D'][sent], batch['label']['S'][sent], tokenizer)
+                            f_pro.write(f'{line_pro}\n')
+                # for sent in range(len(val_dataset)):
+                #     line = format_output_y1(val_dataset[sent]['input_ids'],
+                #                             torch.from_numpy(val_dataset[sent]['label']['N']),
+                #                             torch.from_numpy(val_dataset[sent]['label']['D']),
+                #                             torch.from_numpy(val_dataset[sent]['label']['S']),
+                #                             tokenizer)
+                #     f_pro.write(f'{line}\n')
 
 
 def create_compare_file(
@@ -83,3 +86,8 @@ def create_compare_file(
                                             val_dataset[sent]['label']['S'],
                                             tokenizer)
                     f.write(f'{line}\n')
+
+if __name__ == '__main__':
+    from transformers import AutoTokenizer
+    tokenizer = AutoTokenizer.from_pretrained("tavbert", use_fast=True)
+    compare_by_file(r"hebrew_diacritized/check/test", "test_output", "processed_files", tokenizer, 100, 5)
