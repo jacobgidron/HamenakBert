@@ -208,7 +208,7 @@ if __name__ == '__main__':
 
     base_path = params['train_data']
     dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
-    testpath = [None, None, None, params["test_data"]]  # todo add test path on last element
+    testpath = [None, None, None, params["test_data"]]
     # dirs = ['train', 'val', 'test']
     data_modules = []
     for i, directory in enumerate(dirs):
