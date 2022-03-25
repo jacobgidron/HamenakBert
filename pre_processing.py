@@ -271,6 +271,9 @@ def split_by_sentence(characters: Iterable, maxlen: int, minlen: int):
 class Token:
     items: tuple
 
+    def __init__(self, items):
+        self.items = items
+
     def __str__(self):
         return ''.join(str(c) for c in self.items)
 
