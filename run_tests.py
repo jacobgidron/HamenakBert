@@ -22,6 +22,10 @@ CSV_HEAD = [
     "acc_S",
     "acc_D",
     "acc_N",
+    "dec",
+    "cha",
+    "wor",
+    "voc"
 ]
 
 

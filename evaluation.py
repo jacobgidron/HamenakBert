@@ -5,16 +5,28 @@ from torch.utils.data import DataLoader
 import torch
 from metrics import format_output_y1
 
-def compare_by_file(
-                 test_path,
-                 output_dir,
-                 processed_dir,
-                 tokenizer,
-                 max_len,
-                 min_len,
-                 checkpoint_path=r'C:\Users\itsid\PycharmProjects\HamenakBert\lightning_logs\nikkud_logs\full_traind\checkpoints\epoch=17-step=57761.ckpt'
-):
+
+def compare_by_file_from_checkpoint(
+        test_path,
+        output_dir,
+        processed_dir,
+        tokenizer,
+        max_len,
+        min_len,
+        checkpoint_path=r'C:\Users\idanp\PycharmProjects\HamenakBert\full_traind\checkpoints\epoch=17-step=57761.ckpt'):
     trained_model = MenakBert.load_from_checkpoint(checkpoint_path)
+    compare_by_file_from_model(test_path, output_dir, processed_dir, tokenizer, max_len, min_len, trained_model)
+
+
+def compare_by_file_from_model(
+        test_path,
+        output_dir,
+        processed_dir,
+        tokenizer,
+        max_len,
+        min_len,
+        trained_model):
+
     trained_model.freeze()
 
     inner_out = os.path.join(output_dir, "inner")
@@ -52,9 +64,11 @@ def compare_by_file(
                         preds['S'] = torch.argmax(preds['S'], dim=-1)
 
                         for sent in range(len(preds['N'])):
-                            line_out = format_output_y1(batch['input_ids'][sent], preds['N'][sent], preds['D'][sent], preds['S'][sent], tokenizer)
+                            line_out = format_output_y1(batch['input_ids'][sent], preds['N'][sent], preds['D'][sent],
+                                                        preds['S'][sent], tokenizer)
                             f_out.write(f'{line_out}\n')
-                            line_pro = format_output_y1(batch['input_ids'][sent], batch['label']['N'][sent], batch['label']['D'][sent], batch['label']['S'][sent], tokenizer)
+                            line_pro = format_output_y1(batch['input_ids'][sent], batch['label']['N'][sent],
+                                                        batch['label']['D'][sent], batch['label']['S'][sent], tokenizer)
                             f_pro.write(f'{line_pro}\n')
                 # for sent in range(len(val_dataset)):
                 #     line = format_output_y1(val_dataset[sent]['input_ids'],
@@ -66,14 +80,14 @@ def compare_by_file(
 
 
 def create_compare_file(
-                 test_path,
-                 target_dir,
-                 tokenizer,
-                 max_len,
-                 min_len
-                 ):
+        test_path,
+        target_dir,
+        tokenizer,
+        max_len,
+        min_len
+):
     trained_model = MenakBert.load_from_checkpoint(
-        r'C:\Users\itsid\PycharmProjects\HamenakBert\lightning_logs\nikkud_logs\full_traind\checkpoints\epoch=17-step=57761.ckpt'
+        r'C:\Users\idanp\PycharmProjects\HamenakBert\full_traind\checkpoints\epoch=17-step=57761.ckpt'
     )
     trained_model.freeze()
     if not os.path.exists(target_dir):
@@ -97,7 +111,8 @@ def create_compare_file(
                                             tokenizer)
                     f.write(f'{line}\n')
 
+
 if __name__ == '__main__':
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained("tavbert", use_fast=True)
-    compare_by_file(r"hebrew_diacritized/data/test", r"predicted", r"expected", tokenizer, 100, 5)
+    compare_by_file_from_checkpoint(r"hebrew_diacritized/data/test", r"predicted", r"expected", tokenizer, 100, 5)

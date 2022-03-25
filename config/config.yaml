@@ -1,7 +1,7 @@
 dataset:
-  train_path: hebrew_diacritized/train
-  val_path: hebrew_diacritized/validation
-  test_path: hebrew_diacritized/test_modern
+  train_path: hebrew_diacritized/data/train
+  val_path: hebrew_diacritized/data/validation
+  test_path: hebrew_diacritized/data/test
   max_len: 100
   min_len: 10
 
@@ -9,11 +9,10 @@ model_name: menakbert_y1
 hyper_params:
   lr: 0.00001
   dropout: 0.1
-  batch_size: 32
   gradient_accumilation: 1
-  train_batch_size: 100
-  val_batch_size: 100
-  max_epochs: 100
+  train_batch_size: 32
+  val_batch_size: 32
+  max_epochs: 50
   min_epochs: 5
   weighted_loss: False
 
