@@ -1,10 +1,10 @@
-import cProfile
-import pstats
-
-# import hydra
-# from omegaconf import DictConfig, OmegaConf
-import csv
-import pstats
+# import cProfile
+# import pstats
+#
+# # import hydra
+# # from omegaconf import DictConfig, OmegaConf
+# import csv
+# import pstats
 
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
@@ -14,15 +14,17 @@ from HebrewDataModule import HebrewDataModule
 from MenakBert import MenakBert
 from dataset import textDataset
 from pytorch_lightning import Trainer, seed_everything
-from sklearn.metrics import confusion_matrix
-import seaborn as sn
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.metrics import ConfusionMatrixDisplay
+# from sklearn.metrics import confusion_matrix
+# import seaborn as sn
+# import pandas as pd
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from sklearn.metrics import ConfusionMatrixDisplay
 import gdown
 import os
-from metrics import format_output_y1
+# from metrics import format_output_y1
+# from evaluation import compare_by_file
+from transformers import AutoTokenizer
 
 # from run_tests import CSV_HEAD
 
@@ -36,9 +38,9 @@ MODEL = "tavbert"
 # VAL_PATH = 'hebrew_diacritized/validation'
 # TEST_PATH = 'hebrew_diacritized/test_modern'
 # TRAIN_PATH = r"hebrew_diacritized/train/modern"
-TRAIN_PATH = r"hebrew_diacritized/check/train"
+TRAIN_PATH = r"hebrew_diacritized/check"
 # VAL_PATH = "hebrew_diacritized/validation"
-VAL_PATH = "hebrew_diacritized/check/val"
+VAL_PATH = r"hebrew_diacritized/check_val"
 # TEST_PATH = "hebrew_diacritized/validation"
 TEST_PATH = "hebrew_diacritized/check/test"
 Val_BatchSize = 32
@@ -48,51 +50,50 @@ test_data = [TEST_PATH]
 DROPOUT = 0.1
 Train_BatchSize = 32
 LR = 1e-5
-MAX_EPOCHS = 2
+MAX_EPOCHS = 100
 MIN_EPOCHS = 5
 MAX_LEN = 100
 MIN_LEN = 10
 
 
-def setup_model(train_data, val_data, test_data, model, maxlen, minlen, lr, dropout, train_batch_size,
-                val_batch_size, max_epochs, min_epochs, weighted_loss):
-    # init data module
-    if not os.path.exists(MODEL):
-        os.mkdir(MODEL)
-        gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing",
-                              output=MODEL)
-
+def setup_dm(train_data, val_data, model, maxlen, minlen, train_batch_size, val_batch_size):
     dm = HebrewDataModule(
-        # train_paths=base_path + '/' + train_data,
-        # val_path=base_path + '/' + val_data,
-        # test_paths=base_path + '/' + test_data,
         train_paths=train_data,
         val_path=val_data,
-        test_paths=test_data,
         model=model,
         max_seq_length=maxlen,
         min_seq_length=minlen,
         train_batch_size=train_batch_size,
         val_batch_size=val_batch_size)
     dm.setup()
+    return dm
 
-    weights = None
-    if weighted_loss:
-        tmp = dm.train_data.counter['N']
-        n_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
-        n_weights = (n_weights.sum() / n_weights).to(device)
 
-        tmp = dm.train_data.counter['D']
-        d_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
-        d_weights = (d_weights.sum() / d_weights).to(device)
+def calc_weights(train_data):
+    tmp = train_data.counter['N']
+    n_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+    n_weights = (n_weights / n_weights.sum()).to(device)
 
-        tmp = dm.train_data.counter['S']
-        s_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
-        s_weights = (s_weights.sum() / s_weights).to(device)
+    tmp = train_data.counter['D']
+    d_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+    d_weights = (d_weights / d_weights.sum()).to(device)
 
-        weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
+    tmp = train_data.counter['S']
+    s_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+    s_weights = (s_weights / s_weights.sum()).to(device)
 
-    steps_per_epoch = len(dm.train_data) // train_batch_size
+    weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
+    return weights
+
+
+def setup_model(data_len, lr, dropout, train_batch_size, max_epochs, min_epochs, weights=None):
+    # init data module
+    if not os.path.exists(MODEL):
+        os.mkdir(MODEL)
+        gdown.download_folder("https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing",
+                              output=MODEL)
+
+    steps_per_epoch = data_len // train_batch_size
     total_training_steps = steps_per_epoch * max_epochs
     warmup_steps = total_training_steps // 5
 
@@ -106,7 +107,7 @@ def setup_model(train_data, val_data, test_data, model, maxlen, minlen, lr, drop
                       n_warmup_steps=warmup_steps,
                       n_training_steps=total_training_steps,
                       weights=weights)
-    return model, dm
+    return model
 
 
 def setup_trainer(max_epochs):
@@ -136,67 +137,11 @@ def setup_trainer(max_epochs):
     return trainer
 
 
-def eval_model(trainer, dm, val_path, maxlen):
-    # eval
-    tokenizer = dm.tokenizer
-    val_dataset = textDataset(
-        [val_path],
-        maxlen,
-        tokenizer
-    )
-
-    sample_batch = next(iter(DataLoader(val_dataset, batch_size=8, num_workers=2)))
-
-    trained_model = MenakBert.load_from_checkpoint(
-        trainer.checkpoint_callback.best_model_path,
-    )
-    trained_model.eval()
-    trained_model.freeze()
-
-    # what is this
-    input = sample_batch["input_ids"]
-    mask = sample_batch["attention_mask"]
-    _, predictions = trained_model(input, mask)
-
-
-# pred = np.argmax(predictions['N'].cpu().detach().numpy(), axis=-1)
-# labels = sample_batch["label"]['N'].cpu().detach().numpy()
-#
-# plt.figure(figsize=(12, 7))
-# classes = ["none", "rafa", "shva", "hataph segol", "hataph patah", "hataph kamats", "hirik", "chere", "segol", "phatah",
-#            "kamats", "hulam(full)", "hulam", "kubuch", "shuruk", "phatah"]
-# ax = ConfusionMatrixDisplay.from_predictions(labels.flatten(), pred.flatten(), display_labels=classes, normalize="true")
-# fig = plt.gcf()
-# fig.set_size_inches(1.5 * 18.5, 1.5 * 10.5)
-# plt.show()
-#
-# @hydra.main(config_path="config", config_name="config")
-# def runModel(cfg: DictConfig):
-#     MODEL = f"{cfg.base_path}/tavbert"
-#     # all model params from the CFG
-#     params = {
-#         "train_data": [cfg.dataset.train_path],
-#         "val_data": [cfg.dataset.val_path],
-#         "test_data": [cfg.dataset.test_path],
-#         "model": MODEL,
-#         "maxlen": cfg.dataset.max_len,
-#         "minlen": cfg.dataset.min_len,
-#         "lr": cfg.hyper_params.lr,
-#         "dropout": cfg.hyper_params.dropout,
-#         "train_batch_size": cfg.hyper_params.train_batch_size,
-#         "val_batch_size": cfg.hyper_params.val_batch_size,
-#         "max_epochs": cfg.hyper_params.max_epochs,
-#         "min_epochs": cfg.hyper_params.min_epochs,
-#         "weighted_loss": cfg.hyper_params.weighted_loss,
-#         "path": os.getcwd()
-#     }
-
-
 if __name__ == '__main__':
     # run_with_globals()
     params = {
-        "train_data": train_data,
-        "val_data": val_data,
+        "train_data": TRAIN_PATH,
+        "val_data": VAL_PATH,
         "test_data": test_data,
         "model": MODEL,
         "maxlen": MAX_LEN,
@@ -209,6 +154,31 @@ if __name__ == '__main__':
         "min_epochs": MIN_EPOCHS,
         "weighted_loss": True
     }
+
+
+    base_path = params['train_data']
+    dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
+    # dirs = ['train', 'val', 'test']
+    data_modules = []
+    for directory in dirs:
+        train_path = os.path.join(base_path, directory)
+        dm = setup_dm([train_path], [params['val_data']], MODEL, params['maxlen'],
+                      params['minlen'], params['train_batch_size'], params['val_batch_size'])
+        data_modules.append(dm)
+    for i, dm in enumerate(data_modules):
+        if i == 0:
+            model = setup_model(len(dm.train_data), params['lr'], params['dropout'], params['train_batch_size'],
+                        params['max_epochs'], params['min_epochs'], weights=params['weighted_loss'])
+        else:
+            steps_per_epoch = len(dm.train_data) // params['train_batch_size']
+            total_training_steps = steps_per_epoch * params['max_epochs']
+            warmup_steps = total_training_steps // 5
+            model.n_warmup_steps = warmup_steps
+            model.n_training_steps = total_training_steps
+        trainer = setup_trainer(params['max_epochs'])
+        trainer.fit(model, dm)
+
+
     # model, dm = setup_model( **params)
     # trainer = setup_trainer(params['max_epochs'])
     # # trainer.tune(model)
@@ -224,7 +194,7 @@ if __name__ == '__main__':
     #     writer.writerow(params)
     #
 
-    model, dm = setup_model(**params)
+    # model, dm = setup_model(**params)
     # model, dm = setup_model(train_data=train_data,
     #                         val_data=val_data,
     #                         test_data=test_data,
@@ -238,12 +208,12 @@ if __name__ == '__main__':
     #                         max_epochs=MAX_EPOCHS,
     #                         min_epochs=MIN_EPOCHS,
     #                         weighted_loss=True)
-    trainer = setup_trainer(MAX_EPOCHS)
-    with cProfile.Profile() as pr:
-        trainer.fit(model, dm)
-    stat = pstats.Stats(pr)
-    stat.dump_stats(filename="run_time.prof")
-    trainer.test(model, dm)
+    # trainer = setup_trainer(MAX_EPOCHS)
+    # with cProfile.Profile() as pr:
+    #     trainer.fit(model, dm)
+    # stat = pstats.Stats(pr)
+    # stat.dump_stats(filename="run_time.prof")
+    # trainer.test(model, dm)
     CSV_HEAD = [
         "train_data",
         "val_data",
@@ -262,12 +232,12 @@ if __name__ == '__main__':
         "acc_D",
         "acc_N",
     ]
-    with open("result_tabel.csv", "a") as f:
-        # writer = csv.writer(f)
-        fin = params.copy()
-        fin["acc_S"] = model.final_acc_S.item()
-        fin["acc_D"] = model.final_acc_D.item()
-        fin["acc_N"] = model.final_acc_N.item()
-        writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
-        writer.writerow(fin)
-    # compare_by_file(trainer, r"hebrew_diacritized/check", "ido_cool_guy", dm.tokenizer, 100, 5)
+    # with open("result_tabel.csv", "a") as f:
+    #     # writer = csv.writer(f)
+    #     fin = params.copy()
+    #     fin["acc_S"] = model.final_acc_S.item()
+    #     fin["acc_D"] = model.final_acc_D.item()
+    #     fin["acc_N"] = model.final_acc_N.item()
+    #     writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
+    #     writer.writerow(fin)
+

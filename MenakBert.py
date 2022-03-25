@@ -22,7 +22,7 @@ class MenakBert(LightningModule):
                  train_batch_size,
                  max_epochs,
                  min_epochs,
-                 weights=None,
+                 weights=False,
                  n_training_steps=None,
                  n_warmup_steps=None,
                  ):
@@ -31,7 +31,7 @@ class MenakBert(LightningModule):
         self.linear_D = nn.Linear(768, DAGESH_SIZE)
         self.linear_S = nn.Linear(768, SIN_SIZE)
         self.linear_N = nn.Linear(768, NIQQUD_SIZE)
-        self.dropout = nn.Dropout(0.2)
+        self.dropout = nn.Dropout(dropout)
         self.lr = lr
         self.n_training_steps = n_training_steps
         self.n_warmup_steps = n_warmup_steps
@@ -39,6 +39,7 @@ class MenakBert(LightningModule):
         self.save_hyperparameters()
         self.f1 = F1Score(ignore_index=PAD_INDEX, mdmc_average="samplewise")
         self.weights = weights
+        self.full_weights = None
 
     def forward(self, input_ids, attention_mask, label=None):
         """
@@ -53,13 +54,20 @@ class MenakBert(LightningModule):
 
         loss = 0
         if label is not None:
-            if self.weights is not None:
+            if self.weights:
+                if not self.full_weights:
+                    n_weights = torch.tensor([2.5208e-01, 2.5028e-01, 9.2067e-02, 1.2842e-03, 1.2451e-02, 2.4351e-04,
+                                              7.1912e-02, 3.3259e-02, 4.4605e-02, 7.5153e-02, 8.8453e-02, 4.9196e-02,
+                                              1.8671e-03, 2.7153e-02], device=self.device)
+                    s_weights = torch.tensor([9.6174e-01, 2.8477e-04, 3.4060e-02, 3.9128e-03], device=self.device)
+                    d_weights = torch.tensor([0.4014, 0.5027, 0.0959], device=self.device)
+                    self.full_weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
                 loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=PAD_INDEX,
-                                         weight=self.weights['N'])
+                                         weight=self.full_weights['N'])
                 loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=PAD_INDEX,
-                                         weight=self.weights['D'])
+                                         weight=self.full_weights['D'])
                 loss_s = F.cross_entropy(s.permute(0, 2, 1), label["S"].long(), ignore_index=PAD_INDEX,
-                                         weight=self.weights['S'])
+                                         weight=self.full_weights['S'])
             else:
                 loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=PAD_INDEX)
                 loss_d = F.cross_entropy(d.permute(0, 2, 1), label["D"].long(), ignore_index=PAD_INDEX)
@@ -126,13 +134,13 @@ class MenakBert(LightningModule):
         self.log("val_loss", loss, on_step=True, prog_bar=True, logger=True)
         return {"loss": loss, "predictions": outputs, "labels": labels}
 
-    def test_step(self, batch, batch_idx):
-        input_ids = batch["input_ids"]
-        attention_mask = batch["attention_mask"]
-        labels = batch["label"]
-        loss, outputs = self(input_ids, attention_mask, labels)
-        self.log("test_loss", loss, on_step=True, prog_bar=True, logger=True)
-        return {"loss": loss, "predictions": outputs, "labels": labels}
+    # def test_step(self, batch, batch_idx):
+    #     input_ids = batch["input_ids"]
+    #     attention_mask = batch["attention_mask"]
+    #     labels = batch["label"]
+    #     loss, outputs = self(input_ids, attention_mask, labels)
+    #     self.log("test_loss", loss, on_step=True, prog_bar=True, logger=True)
+    #     return {"loss": loss, "predictions": outputs, "labels": labels}
 
     def test_epoch_end(self, output_results):
         # logits_N = torch.cat([tmp["predictions"]["N"] for tmp in output_results])
