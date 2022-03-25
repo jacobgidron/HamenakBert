@@ -12,7 +12,6 @@ class HebrewDataModule(LightningDataModule):
             self,
             train_paths,
             val_path,
-            test_paths,
             model,
             max_seq_length: int,
             min_seq_length: int,
@@ -24,7 +23,6 @@ class HebrewDataModule(LightningDataModule):
         self.model = model
         self.train_paths = train_paths
         self.val_paths = val_path
-        self.test_paths = test_paths
         self.max_seq_length = max_seq_length
         self.train_batch_size = train_batch_size
         self.min_seq_length = min_seq_length
@@ -46,21 +44,11 @@ class HebrewDataModule(LightningDataModule):
             self.tokenizer
         )
 
-        self.test_data = textDataset(
-            self.test_paths,
-            self.max_seq_length,
-            self.min_seq_length,
-            self.tokenizer
-        )
-
     def train_dataloader(self):
         return DataLoader(self.train_data, batch_size=self.train_batch_size, num_workers=12, shuffle=True)
 
     def val_dataloader(self):
         return DataLoader(self.val_data, batch_size=self.val_batch_size, num_workers=12)
-
-    def test_dataloader(self):
-        return DataLoader(self.test_data, batch_size=self.val_batch_size, num_workers=12)
 
 
 
