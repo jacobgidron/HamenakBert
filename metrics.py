@@ -242,7 +242,7 @@ def format_output_y1(pad_text, pad_niqqud, pad_dagesh, pad_sin, tokenizer):
 
     output = ''
     for i in range(len(niqqud)):
-        diacritization = ''.join((text[2*i], niqqud[i], dagesh[i], sin[i]))
+        diacritization = ''.join((text[2*i], dagesh[i], sin[i], niqqud[i]))
         output = ''.join((output, diacritization))
     return output.replace(pre_processing.RAFE, '')
 
