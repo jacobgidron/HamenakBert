@@ -26,12 +26,15 @@ def compare_by_file(
     if not os.path.exists(processed_dir):
         os.mkdir(processed_dir)
         os.mkdir(inner_pro)
-
+    counter = 0
     for root, dirs, files in os.walk(test_path):
+        counter += 1
         for name in files:
+            new_name = str(counter) + "_" + name
             curr_in = os.path.join(root, name)
-            curr_out = os.path.join(inner_out, name)
-            curr_pro = os.path.join(inner_pro, name)
+            curr_out = os.path.join(inner_out, new_name)
+            curr_pro = os.path.join(inner_pro, new_name)
+
             val_dataset = textDataset(
                 [curr_in],
                 max_len,
@@ -97,4 +100,4 @@ def create_compare_file(
 if __name__ == '__main__':
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained("tavbert", use_fast=True)
-    compare_by_file(r"check", r"predicted", r"expected", tokenizer, 100, 5)
+    compare_by_file(r"hebrew_diacritized/data/test", r"predicted", r"expected", tokenizer, 100, 5)
