@@ -1,4 +1,3 @@
-
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer, seed_everything
 from torch.utils.data import DataLoader
 from dataset import textDataset
@@ -12,12 +11,12 @@ class HebrewDataModule(LightningDataModule):
             self,
             train_paths,
             val_path,
-            test_paths,
             model,
             max_seq_length: int,
             min_seq_length: int,
             train_batch_size: int,
             val_batch_size: int,
+            test_paths=None,
             **kwargs,
     ):
         super().__init__()
@@ -46,22 +45,20 @@ class HebrewDataModule(LightningDataModule):
             self.tokenizer
         )
 
+    def train_dataloader(self):
+        return DataLoader(self.train_data, batch_size=self.train_batch_size, num_workers=12, shuffle=True)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_data, batch_size=self.val_batch_size, num_workers=12)
+
+    def test_dataloader(self):
         self.test_data = textDataset(
             self.test_paths,
             self.max_seq_length,
             self.min_seq_length,
             self.tokenizer
         )
-
-    def train_dataloader(self):
-        return DataLoader(self.train_data, batch_size=self.train_batch_size, shuffle=True)
-
-    def val_dataloader(self):
-        return DataLoader(self.val_data, batch_size=self.val_batch_size)
-
-    def test_dataloader(self):
-        return DataLoader(self.test_data, batch_size=self.val_batch_size)
-
+        return DataLoader(self.test_data, batch_size=self.val_batch_size, num_workers=12)
 
 
 if __name__ == '__main__':

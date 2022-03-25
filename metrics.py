@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
+from typing import List, Dict
 
 import dataset
 import pre_processing
@@ -18,13 +19,13 @@ class Document:
     def sentences(self):
         return [sent + '.' for sent in self.text.split('. ') if len(pre_processing.remove_niqqud(sent)) > 15]
 
-    def hebrew_items(self) -> list[pre_processing.HebrewItem]:
+    def hebrew_items(self) -> List[pre_processing.HebrewItem]:
         return list(pre_processing.iterate_dotted_text(self.text))
 
-    def tokens(self) -> list[pre_processing.Token]:
+    def tokens(self) -> List[pre_processing.Token]:
         return pre_processing.tokenize(self.hebrew_items())
 
-    def vocalized_tokens(self) -> list[pre_processing.Token]:
+    def vocalized_tokens(self) -> List[pre_processing.Token]:
         return [x.vocalize() for x in self.tokens()]
 
 
@@ -32,7 +33,7 @@ class Document:
 class DocumentPack:
     source: str
     name: str
-    docs: dict[str, Document]
+    docs: Dict[str, Document]
 
     def __getitem__(self, item):
         return self.docs[item]
@@ -64,7 +65,7 @@ def iter_documents(*systems) -> typing.Iterator[DocumentPack]:
             yield read_document_pack(path_to_expected, *systems)
 
 
-def iter_documents_by_folder(*systems) -> typing.Iterator[list[DocumentPack]]:
+def iter_documents_by_folder(*systems) -> typing.Iterator[List[DocumentPack]]:
     for folder in basepath.iterdir():
         yield [read_document_pack(path_to_expected, *systems) for path_to_expected in folder.iterdir()]
 
@@ -255,10 +256,11 @@ def format_output_y2(text, y2) -> str:
 
 
 if __name__ == '__main__':
-    test_data = dataset.textDataset(tuple(["hebrew_diacritized/train/modern/law"]), 100, 10,
-                                    AutoTokenizer.from_pretrained('tavbert', use_fast=True))
-    loader = DataLoader(test_data, shuffle=True)
-    sample_batch = next(iter(loader))
-    # text = metrics.format_output_y1(sample_batch['input_ids'].squeeze(),sample_batch['label']['N'].squeeze(),sample_batch['label']['D'].squeeze(),sample_batch['label']['S'].squeeze())
-    input = sample_batch["input_ids"]
-    mask = sample_batch["attention_mask"]
+    basepath = Path('tests/dicta/expected')
+    all_stats(
+        'Snopi',
+        'Dicta',
+        'Nakdimon0',
+        # 'Nakdimon',
+    )
+
