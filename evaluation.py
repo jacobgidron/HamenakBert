@@ -16,15 +16,22 @@ def compare_by_file(
 ):
     trained_model = MenakBert.load_from_checkpoint(checkpoint_path)
     trained_model.freeze()
+
+    inner_out = os.path.join(output_dir, "inner")
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+        os.mkdir(inner_out)
+
+    inner_pro = os.path.join(processed_dir, "inner")
     if not os.path.exists(processed_dir):
         os.mkdir(processed_dir)
+        os.mkdir(inner_pro)
+
     for root, dirs, files in os.walk(test_path):
         for name in files:
             curr_in = os.path.join(root, name)
-            curr_out = os.path.join(output_dir, name)
-            curr_pre = os.path.join(processed_dir, name)
+            curr_out = os.path.join(inner_out, name)
+            curr_pro = os.path.join(inner_pro, name)
             val_dataset = textDataset(
                 [curr_in],
                 max_len,
@@ -34,7 +41,7 @@ def compare_by_file(
             loader = DataLoader(val_dataset, batch_size=32, num_workers=8)
 
             with open(curr_out, 'a', encoding='utf8') as f_out:
-                with open(curr_pre, 'a', encoding='utf8') as f_pro:
+                with open(curr_pro, 'a', encoding='utf8') as f_pro:
                     for batch in loader:
                         _, preds = trained_model(batch['input_ids'], batch['attention_mask'])
                         preds['N'] = torch.argmax(preds['N'], dim=-1)
@@ -90,4 +97,4 @@ def create_compare_file(
 if __name__ == '__main__':
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained("tavbert", use_fast=True)
-    compare_by_file(r"hebrew_diacritized/check/test", "test_output", "processed_files", tokenizer, 100, 5)
+    compare_by_file(r"check", r"predicted", r"expected", tokenizer, 100, 5)

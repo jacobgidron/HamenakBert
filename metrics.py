@@ -256,11 +256,11 @@ def format_output_y2(text, y2) -> str:
 
 
 if __name__ == '__main__':
-    basepath = Path('tests/dicta/expected')
+    basepath = Path('expected')
     all_stats(
-        'Snopi',
-        'Dicta',
-        'Nakdimon0',
+        'predicted',
+        # 'Dicta',
+        # 'Nakdimon0',
         # 'Nakdimon',
     )
 
