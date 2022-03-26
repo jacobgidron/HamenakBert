@@ -208,6 +208,7 @@ def all_stats(*systems):
         ev = 1 - results['voc']
         print(f'{(ew - ev) / ew:.2%}')
         print()
+        return results
 
 
 def all_failed():
@@ -254,6 +255,7 @@ def format_output_y2(text, y2) -> str:
         output = ''.join((output, diacritization))
     return output
 
+basepath = Path('expected')
 
 if __name__ == '__main__':
     basepath = Path('expected')

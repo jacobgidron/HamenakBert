@@ -1,6 +1,7 @@
-# import hydra
-# from omegaconf import DictConfig, OmegaConf
 import csv
+
+import hydra
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
@@ -12,11 +13,12 @@ from pytorch_lightning import Trainer, seed_everything
 import gdown
 import os
 from transformers import AutoTokenizer
-
+from evaluation import compare_by_file_from_model
+from pathlib import Path
+from metrics import all_stats
 # from run_tests import CSV_HEAD
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-seed_everything(42, workers=True)
 
 # MODEL_LINK = "https://drive.google.com/drive/folders/1K78B5SM8FjBc_5r-UWTwoj1x105xpksK?usp=sharing"
 MODEL = "tavbert"
@@ -119,106 +121,51 @@ def setup_trainer(max_epochs):
     return trainer
 
 
-#
-# @hydra.main(config_path="config", config_name="config")
-# def runModel(cfg: DictConfig):
-#     os.environ['TOKENIZERS_PARALLELISM'] = 'true'
-#     global MODEL
-#     MODEL = os.path.join(f"{cfg.base_path}", "tavbert")
-#     print(OmegaConf.to_yaml(cfg))
-#
-#     print(os.getcwd())
-#
-#     # all model params from the CFG
-#     params = {
-#         "train_data": [cfg.dataset.train_path],
-#         "val_data": [cfg.dataset.val_path],
-#         "test_data": [cfg.dataset.test_path],
-#         "maxlen": cfg.dataset.max_len,
-#         "minlen": cfg.dataset.min_len,
-#         "lr": cfg.hyper_params.lr,
-#         "dropout": cfg.hyper_params.dropout,
-#         "train_batch_size": cfg.hyper_params.train_batch_size,
-#         "val_batch_size": cfg.hyper_params.val_batch_size,
-#         "max_epochs": cfg.hyper_params.max_epochs,
-#         "min_epochs": cfg.hyper_params.min_epochs,
-#         "weighted_loss": cfg.hyper_params.weighted_loss,
-#         "path": os.getcwd(),
-#     }
-#
-#     base_path = params['train_data']
-#     dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
-#     testpath = [None, None, None, None]  # todo add test path on last element
-#     # dirs = ['train', 'val', 'test']
-#     data_modules = []
-#     for i, directory in enumerate(dirs):
-#         train_path = os.path.join(base_path, directory)
-#         # dm = setup_dm([train_path],
-#         #               [params['val_data']],
-#         #               testpath[i],
-#         #               MODEL,
-#         #               params['maxlen'],
-#         #               params['minlen'],
-#         #               params['train_batch_size'],
-#         #               params['val_batch_size']
-#         #               )
-#         dm = HebrewDataModule(
-#             train_paths=[train_path],
-#             val_path=[params['val_data']],
-#             test_paths=testpath[i],
-#             model=MODEL,
-#             max_seq_length=params['maxlen'],
-#             min_seq_length=params['minlen'],
-#             train_batch_size=params['train_batch_size'],
-#             val_batch_size=params['val_batch_size'])
-#         dm.setup()
-#         data_modules.append(dm)
-#     for i, dm in enumerate(data_modules):
-#         if i == 0:
-#             model = setup_model(len(dm.train_data), params['lr'], params['dropout'], params['train_batch_size'],
-#                                 params['max_epochs'], params['min_epochs'], weights=params['weighted_loss'])
-#         else:
-#             steps_per_epoch = len(dm.train_data) // params['train_batch_size']
-#             total_training_steps = steps_per_epoch * params['max_epochs']
-#             warmup_steps = total_training_steps // 5
-#             model.n_warmup_steps = warmup_steps
-#             model.n_training_steps = total_training_steps
-#         trainer = setup_trainer(params['max_epochs'])
-#         trainer.fit(model, dm)
-#     trainer.test(model, data_modules[-1])
-#
+@hydra.main(config_path="config", config_name="config")
+def runModel(cfg: DictConfig):
+    os.environ['TOKENIZERS_PARALLELISM'] = 'true'
+    global MODEL
+    MODEL = os.path.join(f"{cfg.base_path}", "tavbert")
+    print(OmegaConf.to_yaml(cfg))
 
-if __name__ == '__main__':
-    # run_with_globals()
+    print(os.getcwd())
+
+    # all model params from the CFG
     params = {
-        "train_data": TRAIN_PATH,
-        "val_data": VAL_PATH,
-        "test_data": TEST_PATH,
-        "model": MODEL,
-        "maxlen": MAX_LEN,
-        "minlen": MIN_LEN,
-        "lr": LR,
-        "dropout": DROPOUT,
-        "train_batch_size": Train_BatchSize,
-        "val_batch_size": Val_BatchSize,
-        "max_epochs": MAX_EPOCHS,
-        "min_epochs": MIN_EPOCHS,
-        "weighted_loss": True
+        "train_data": cfg.dataset.train_path,
+        "val_data": cfg.dataset.val_path,
+        "test_data": cfg.dataset.test_path,
+        "maxlen": cfg.dataset.max_len,
+        "minlen": cfg.dataset.min_len,
+        "lr": cfg.hyper_params.lr,
+        "dropout": cfg.hyper_params.dropout,
+        "train_batch_size": cfg.hyper_params.train_batch_size,
+        "val_batch_size": cfg.hyper_params.val_batch_size,
+        "max_epochs": cfg.hyper_params.max_epochs,
+        "min_epochs": cfg.hyper_params.min_epochs,
+        "weighted_loss": cfg.hyper_params.weighted_loss,
+        "path": os.getcwd(),
     }
 
-    base_path = params['train_data']
+    base_path = cfg.base_path
     dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
-    testpath = [None, None, None, params["test_data"]]
+    testpath = [None, None, None, os.path.join(cfg.base_path,params['test_data'])]  # todo add test path on last element
     # dirs = ['train', 'val', 'test']
     data_modules = []
     for i, directory in enumerate(dirs):
-        # train_path = base_path + "/" + directory
-        train_path = os.path.join(base_path, directory)
-        # dm = setup_dm([train_path], [params['val_data']], MODEL, params['maxlen'],
-        #               params['minlen'], params['train_batch_size'], params['val_batch_size'])
+        train_path = os.path.join(params['train_data'], directory)
+        # dm = setup_dm([train_path],
+        #               [params['val_data']],
+        #               testpath[i],
+        #               MODEL,
+        #               params['maxlen'],
+        #               params['minlen'],
+        #               params['train_batch_size'],
+        #               params['val_batch_size']
+        #               )
         dm = HebrewDataModule(
-            train_paths=[train_path],
-            val_path=[params['val_data']],
+            train_paths=[os.path.join(base_path,train_path)],
+            val_path=[os.path.join(base_path,params['val_data'])],
             test_paths=[testpath[i]],
             model=MODEL,
             max_seq_length=params['maxlen'],
@@ -240,6 +187,78 @@ if __name__ == '__main__':
         trainer = setup_trainer(params['max_epochs'])
         trainer.fit(model, dm)
     trainer.test(model, data_modules[-1])
+
+    tokenizer = AutoTokenizer.from_pretrained("tavbert", use_fast=True)
+    compare_by_file_from_model(base_path + r'/hebrew_diacritized/data/test',r"predicted", r"expected", tokenizer, 100, 5,trainer.checkpoint_callback.best_model_path)
+    results = all_stats('predicted')
+
+    with open("result_tabel.csv", "a") as f:
+        # writer = csv.writer(f)
+        fin = params.copy()
+        fin["acc_S"] = model.final_acc_S
+        fin["acc_D"] = model.final_acc_D
+        fin["acc_N"] = model.final_acc_N
+        fin['dec'] = results['dec']
+        fin['cha'] = results['cha']
+        fin['wor'] = results['wor']
+        fin['voc'] = results['voc']
+        writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
+        writer.writerow(params)
+
+
+if __name__ == '__main__':
+    seed_everything(42, workers=True)
+    runModel()
+    # params = {
+    #     "train_data": TRAIN_PATH,
+    #     "val_data": VAL_PATH,
+    #     "test_data": TEST_PATH,
+    #     "model": MODEL,
+    #     "maxlen": MAX_LEN,
+    #     "minlen": MIN_LEN,
+    #     "lr": LR,
+    #     "dropout": DROPOUT,
+    #     "train_batch_size": Train_BatchSize,
+    #     "val_batch_size": Val_BatchSize,
+    #     "max_epochs": MAX_EPOCHS,
+    #     "min_epochs": MIN_EPOCHS,
+    #     "weighted_loss": True
+    # }
+    #
+    # base_path = params['train_data']
+    # dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
+    # testpath = [None, None, None, params["test_data"]]
+    # # dirs = ['train', 'val', 'test']
+    # data_modules = []
+    # for i, directory in enumerate(dirs):
+    #     # train_path = base_path + "/" + directory
+    #     train_path = os.path.join(base_path, directory)
+    #     # dm = setup_dm([train_path], [params['val_data']], MODEL, params['maxlen'],
+    #     #               params['minlen'], params['train_batch_size'], params['val_batch_size'])
+    #     dm = HebrewDataModule(
+    #         train_paths=[train_path],
+    #         val_path=[params['val_data']],
+    #         test_paths=[testpath[i]],
+    #         model=MODEL,
+    #         max_seq_length=params['maxlen'],
+    #         min_seq_length=params['minlen'],
+    #         train_batch_size=params['train_batch_size'],
+    #         val_batch_size=params['val_batch_size'])
+    #     dm.setup()
+    #     data_modules.append(dm)
+    # for i, dm in enumerate(data_modules):
+    #     if i == 0:
+    #         model = setup_model(len(dm.train_data), params['lr'], params['dropout'], params['train_batch_size'],
+    #                             params['max_epochs'], params['min_epochs'], weights=params['weighted_loss'])
+    #     else:
+    #         steps_per_epoch = len(dm.train_data) // params['train_batch_size']
+    #         total_training_steps = steps_per_epoch * params['max_epochs']
+    #         warmup_steps = total_training_steps // 5
+    #         model.n_warmup_steps = warmup_steps
+    #         model.n_training_steps = total_training_steps
+    #     trainer = setup_trainer(params['max_epochs'])
+    #     trainer.fit(model, dm)
+    # trainer.test(model, data_modules[-1])
 
     # model, dm = setup_model( **params)
     # trainer = setup_trainer(params['max_epochs'])
