@@ -45,6 +45,14 @@ class HebrewDataModule(LightningDataModule):
             self.tokenizer
         )
 
+        if self.test_paths[0]:
+            self.test_data = textDataset(
+                self.test_paths,
+                self.max_seq_length,
+                self.min_seq_length,
+                self.tokenizer
+            )
+
     def train_dataloader(self):
         return DataLoader(self.train_data, batch_size=self.train_batch_size, num_workers=12, shuffle=True)
 
@@ -52,12 +60,6 @@ class HebrewDataModule(LightningDataModule):
         return DataLoader(self.val_data, batch_size=self.val_batch_size, num_workers=12)
 
     def test_dataloader(self):
-        self.test_data = textDataset(
-            self.test_paths,
-            self.max_seq_length,
-            self.min_seq_length,
-            self.tokenizer
-        )
         return DataLoader(self.test_data, batch_size=self.val_batch_size, num_workers=12)
 
 
