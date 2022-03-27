@@ -1,7 +1,7 @@
 dataset:
-  train_path: hebrew_diacritized/check/train
-  val_path: hebrew_diacritized/check/validation
-  test_path: hebrew_diacritized/check/test
+  train_path: hebrew_diacritized/data/train
+  val_path: hebrew_diacritized/data/validation
+  test_path: hebrew_diacritized/data/test
   max_len: 100
   min_len: 10
 
