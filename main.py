@@ -147,11 +147,9 @@ def runModel(cfg: DictConfig):
     }
 
     base_path = cfg.base_path
-    # dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
-    dirs = ['']
-    testpath = [os.path.join(cfg.base_path, params['test_data'])]  # todo add test path on last element
+    dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
 
-    # testpath = [None, None, None, os.path.join(cfg.base_path,params['test_data'])]  # todo add test path on last element
+    testpath = [None, None, None, os.path.join(cfg.base_path,params['test_data'])]  # todo add test path on last element
     # dirs = ['train', 'validation', 'test']
     data_modules = []
     for i, directory in enumerate(dirs):
