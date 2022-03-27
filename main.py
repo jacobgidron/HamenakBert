@@ -13,10 +13,10 @@ from pytorch_lightning import Trainer, seed_everything
 import gdown
 import os
 from transformers import AutoTokenizer
-from evaluation import compare_by_file_from_model
+from evaluation import compare_by_file_from_model, compare_by_file_from_checkpoint
 from pathlib import Path
 from metrics import all_stats
-# from run_tests import CSV_HEAD
+from run_tests import CSV_HEAD
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -129,7 +129,6 @@ def runModel(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg))
 
     print(os.getcwd())
-
     # all model params from the CFG
     params = {
         "train_data": cfg.dataset.train_path,
@@ -148,9 +147,12 @@ def runModel(cfg: DictConfig):
     }
 
     base_path = cfg.base_path
-    dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
-    testpath = [None, None, None, os.path.join(cfg.base_path,params['test_data'])]  # todo add test path on last element
-    # dirs = ['train', 'val', 'test']
+    # dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
+    dirs = ['']
+    testpath = [os.path.join(cfg.base_path, params['test_data'])]  # todo add test path on last element
+
+    # testpath = [None, None, None, os.path.join(cfg.base_path,params['test_data'])]  # todo add test path on last element
+    # dirs = ['train', 'validation', 'test']
     data_modules = []
     for i, directory in enumerate(dirs):
         train_path = os.path.join(params['train_data'], directory)
@@ -164,8 +166,8 @@ def runModel(cfg: DictConfig):
         #               params['val_batch_size']
         #               )
         dm = HebrewDataModule(
-            train_paths=[os.path.join(base_path,train_path)],
-            val_path=[os.path.join(base_path,params['val_data'])],
+            train_paths=[os.path.join(base_path, train_path)],
+            val_path=[os.path.join(base_path, params['val_data'])],
             test_paths=[testpath[i]],
             model=MODEL,
             max_seq_length=params['maxlen'],
@@ -174,6 +176,7 @@ def runModel(cfg: DictConfig):
             val_batch_size=params['val_batch_size'])
         dm.setup()
         data_modules.append(dm)
+
     for i, dm in enumerate(data_modules):
         if i == 0:
             model = setup_model(len(dm.train_data), params['lr'], params['dropout'], params['train_batch_size'],
@@ -186,24 +189,26 @@ def runModel(cfg: DictConfig):
             model.n_training_steps = total_training_steps
         trainer = setup_trainer(params['max_epochs'])
         trainer.fit(model, dm)
+
     trainer.test(model, data_modules[-1])
 
-    tokenizer = AutoTokenizer.from_pretrained("tavbert", use_fast=True)
-    compare_by_file_from_model(base_path + r'/hebrew_diacritized/data/test',r"predicted", r"expected", tokenizer, 100, 5,trainer.checkpoint_callback.best_model_path)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=True)
+    compare_by_file_from_checkpoint(base_path + r'/hebrew_diacritized/check/test', r"predicted", r"expected", tokenizer,
+                                    100, 5, trainer.checkpoint_callback.best_model_path)
     results = all_stats('predicted')
 
-    with open("result_tabel.csv", "a") as f:
+    with open(os.path.join(base_path, "result_tabel.csv"), "a") as f:
         # writer = csv.writer(f)
         fin = params.copy()
-        fin["acc_S"] = model.final_acc_S
-        fin["acc_D"] = model.final_acc_D
-        fin["acc_N"] = model.final_acc_N
+        fin["acc_S"] = model.final_acc_S.item()
+        fin["acc_D"] = model.final_acc_D.item()
+        fin["acc_N"] = model.final_acc_N.item()
         fin['dec'] = results['dec']
         fin['cha'] = results['cha']
         fin['wor'] = results['wor']
         fin['voc'] = results['voc']
         writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
-        writer.writerow(params)
+        writer.writerow(fin)
 
 
 if __name__ == '__main__':
@@ -228,7 +233,7 @@ if __name__ == '__main__':
     # base_path = params['train_data']
     # dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
     # testpath = [None, None, None, params["test_data"]]
-    # # dirs = ['train', 'val', 'test']
+    # # dirs = ['train', 'validation', 'test']
     # data_modules = []
     # for i, directory in enumerate(dirs):
     #     # train_path = base_path + "/" + directory
@@ -295,24 +300,6 @@ if __name__ == '__main__':
     # stat = pstats.Stats(pr)
     # stat.dump_stats(filename="run_time.prof")
     # trainer.test(model, dm)
-    CSV_HEAD = [
-        "train_data",
-        "val_data",
-        "test_data",
-        "model",
-        "maxlen",
-        "minlen",
-        "lr",
-        "dropout",
-        "train_batch_size",
-        "val_batch_size",
-        "max_epochs",
-        "min_epochs",
-        "weighted_loss",
-        "acc_S",
-        "acc_D",
-        "acc_N",
-    ]
     # with open("result_tabel.csv", "a") as f:
     #     # writer = csv.writer(f)
     #     fin = params.copy()

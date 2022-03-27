@@ -133,6 +133,14 @@ class MenakBert(LightningModule):
         self.log("val_loss", loss, on_step=True, prog_bar=True, logger=True)
         return {"loss": loss, "predictions": outputs, "labels": labels}
 
+    def test_step(self, batch, batch_idx):
+        input_ids = batch["input_ids"]
+        attention_mask = batch["attention_mask"]
+        labels = batch["label"]
+        loss, outputs = self(input_ids, attention_mask, labels)
+        self.log("test_loss", loss, on_step=True, prog_bar=True, logger=True)
+        return {"loss": loss, "predictions": outputs, "labels": labels}
+
     def test_epoch_end(self, output_results):
         logits_N = torch.cat([tmp["predictions"]["N"] for tmp in output_results])
         logits_D = torch.cat([tmp["predictions"]["D"] for tmp in output_results])
@@ -213,7 +221,7 @@ if __name__ == "__main__":
     seed_everything(42)
 
     TRAIN_PATH = '/content/Bert_data/train'
-    VAL_PATH = '/content/Bert_data/val'
+    VAL_PATH = '/content/Bert_data/validation'
     TEST_PATH = '/content/Bert_data/test'
 
     train_data = [TRAIN_PATH]
