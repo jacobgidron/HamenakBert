@@ -190,8 +190,17 @@ def runModel(cfg: DictConfig):
 
     trainer.test(model, data_modules[-1])
 
+    with open(os.path.join(base_path, "result_tabel.csv"), "a") as f:
+        # writer = csv.writer(f)
+        fin = params.copy()
+        fin["acc_S"] = model.final_acc_S.item()
+        fin["acc_D"] = model.final_acc_D.item()
+        fin["acc_N"] = model.final_acc_N.item()
+        writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
+        writer.writerow(fin)
+
     tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=True)
-    compare_by_file_from_checkpoint(base_path + r'/hebrew_diacritized/check/test', r"predicted", r"expected", tokenizer,
+    compare_by_file_from_checkpoint(os.path.join(base_path, testpath[-1]), r"predicted", r"expected", tokenizer,
                                     100, 5, trainer.checkpoint_callback.best_model_path)
     results = all_stats('predicted')
 
