@@ -41,7 +41,7 @@ LETTERS_SIZE = len(letters_table)
 NIQQUD_SIZE = len(niqqud_table)
 DAGESH_SIZE = len(dagesh_table)
 SIN_SIZE = len(sin_table)
-PAD_INDEX = 20 #TODO check if to move to main or to config file
+PAD_INDEX = 20  # TODO check if to move to main or to config file
 # A dictionary that converts a triplet (niqqud, dagesh, sin) into a unique ID for the triplet
 niqqud_to_id_dict = {}
 
@@ -115,27 +115,26 @@ class textDataset(Dataset):
                 self.counter['D'] += Counter(dagesh[i])
                 self.counter['S'] += Counter(sin[i])
 
-
                 self.labels.append({'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]})
                 self.text.append("".join(normalized[i]))
 
         self.counter['N'].pop(PAD_INDEX)
         self.counter['D'].pop(PAD_INDEX)
         self.counter['S'].pop(PAD_INDEX)
-            # y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
-            # for i in range(len(niqqud)):
-            #     for j in range(len(niqqud[i])):
-            #         y3[i][j][niqqud[i][j]] = 1/3
-            #         y3[i][j][dagesh[i][j]] = 1/3
-            #         y3[i][j][sin[i][j]] = 1/3
-            #
-            #     item = {
-            #         "text": "".join(normalized[i]),
-            #         "label": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
-            #         #"y2": [niqqud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))],
-            #         #"y3": y3
-            #     }
-            #     self.data.append(item)
+        # y3 = [[[0 for i in range(NIQQUD_SIZE + DAGESH_SIZE + SIN_SIZE)] for j in range(len(niqqud[q]))] for q in range(len(niqqud))]
+        # for i in range(len(niqqud)):
+        #     for j in range(len(niqqud[i])):
+        #         y3[i][j][niqqud[i][j]] = 1/3
+        #         y3[i][j][dagesh[i][j]] = 1/3
+        #         y3[i][j][sin[i][j]] = 1/3
+        #
+        #     item = {
+        #         "text": "".join(normalized[i]),
+        #         "label": {'N': niqqud[i], 'D': dagesh[i], 'S': sin[i]},
+        #         #"y2": [niqqud_to_id_dict[(niqqud[i][j], dagesh[i][j], sin[i][j])] for j in range(len(niqqud[i]))],
+        #         #"y3": y3
+        #     }
+        #     self.data.append(item)
 
     def __len__(self):
         return len(self.labels)
@@ -168,6 +167,33 @@ def read_corpora(base_paths):
         [(filename, list(pre_processing.iterate_file(filename))) for filename in utils.iterate_files(base_paths)])
 
 
+def calc_weights(train_data):
+    import torch
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    """
+    a function by ido to calculate the recommended weights for the model
+    Args:
+        train_data:
+
+    Returns:
+
+    """
+    tmp = train_data.counter['N']
+    n_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+    n_weights = (n_weights / n_weights.sum()).to(device)
+
+    tmp = train_data.counter['D']
+    d_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+    d_weights = (d_weights / d_weights.sum()).to(device)
+
+    tmp = train_data.counter['S']
+    s_weights = torch.tensor([tmp[i] for i in range(len(tmp.keys()))])
+    s_weights = (s_weights / s_weights.sum()).to(device)
+
+    weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
+    return weights
+
+
 if __name__ == '__main__':
     # data = Data.concatenate([Data.from_text(x, maxlen=64) for x in read_corpora(['train1.txt'])])
     # data.print_stats()
@@ -176,14 +202,41 @@ if __name__ == '__main__':
     # print(res)
     # train_dict = {}
     # train_dict["test"] = get_xy(load_data(tuple(['train1.txt', 'train2.txt']), maxlen=16).shuffle())
-    test_data = textDataset(tuple(["hebrew_diacritized/train/modern/law"]), 100, 10, AutoTokenizer.from_pretrained('tavbert', use_fast=True))
-    loader = DataLoader(test_data, shuffle=True)
-    sample_batch = next(iter(loader))
+    test_data = textDataset(tuple([r"hebrew_diacritized/data/train/early_modern"]), 100, 10,
+                            AutoTokenizer.from_pretrained('tavbert', use_fast=True))
+    import json
+
+    res = calc_weights(test_data)
+    print(10 * "-" + "\n\n\nweights_early_modern\n\n\n" + 10 * "-")
+    print(res)
+    # with open("weights_early_modern.json", "w") as f:
+    #     print(10 * "-" + "\n\n\nweights_early_modern\n\n\n" + 10 * "-")
+    #     res_s = json.dumps(res, indent=4)
+    #     print(res_s)
+    #     f.write(res_s)
+
+    test_data = textDataset(tuple([r"hebrew_diacritized/data/train/modern"]), 100, 10,
+                            AutoTokenizer.from_pretrained('tavbert', use_fast=True))
+    import json
+
+    res = calc_weights(test_data)
+    print(10 * "-" + "\n\n\nweights_modern\n\n\n" + 10 * "-")
+    print(res)
+    # with open("weights_modern.json", "w") as f:
+    #     res_s = json.dumps(res, indent=4)
+    #     print(10 * "-" + "\n\n\nweights_modern\n\n\n" + 10 * "-")
+    #     print(res_s)
+    #     f.write(res_s)
+
+    # loader = DataLoader(test_data, shuffle=True)
+    #
+    # sample_batch = next(iter(loader))
+
     # text = metrics.format_output_y1(sample_batch['input_ids'].squeeze(),sample_batch['label']['N'].squeeze(),sample_batch['label']['D'].squeeze(),sample_batch['label']['S'].squeeze())
-    input = sample_batch["input_ids"]
-    mask = sample_batch["attention_mask"]
-    # _, predictions = model(input, mask)
-    x = 5
+    # input = sample_batch["input_ids"]
+    # mask = sample_batch["attention_mask"]
+    # # _, predictions = model(input, mask)
+    # x = 5
 
     # print_tables()
     # print(letters_table.to_ids(["שלום"]))

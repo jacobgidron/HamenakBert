@@ -28,6 +28,7 @@ class MenakBert(LightningModule):
                  ):
         super().__init__()
         self.model = AutoModel.from_pretrained(model)
+        self.model.hidden_dropout_prob = dropout
         self.linear_D = nn.Linear(768, DAGESH_SIZE)
         self.linear_S = nn.Linear(768, SIN_SIZE)
         self.linear_N = nn.Linear(768, NIQQUD_SIZE)
@@ -56,11 +57,11 @@ class MenakBert(LightningModule):
         if label is not None:
             if self.weights:
                 if not self.full_weights:
-                    n_weights = torch.tensor([2.5208e-01, 2.5028e-01, 9.2067e-02, 1.2842e-03, 1.2451e-02, 2.4351e-04,
-                                              7.1912e-02, 3.3259e-02, 4.4605e-02, 7.5153e-02, 8.8453e-02, 4.9196e-02,
-                                              1.8671e-03, 2.7153e-02], device=self.device)
-                    s_weights = torch.tensor([9.6174e-01, 2.8477e-04, 3.4060e-02, 3.9128e-03], device=self.device)
-                    d_weights = torch.tensor([0.4014, 0.5027, 0.0959], device=self.device)
+                    n_weights = torch.tensor([2.4920e-01, 2.6323e-01, 8.8410e-02, 1.0692e-03, 1.2552e-02, 1.4649e-04,
+                                    7.2875e-02, 2.8470e-02, 4.6895e-02, 7.4532e-02, 8.5893e-02, 4.8047e-02,
+                                    2.6159e-05, 2.8658e-02], device=self.device)
+                    s_weights = torch.tensor([9.6249e-01, 3.2961e-04, 3.4374e-02, 2.8073e-03], device=self.device)
+                    d_weights = torch.tensor([0.3914, 0.5126, 0.0961], device=self.device)
                     self.full_weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
                 loss_n = F.cross_entropy(n.permute(0, 2, 1), label["N"].long(), ignore_index=PAD_INDEX,
                                          weight=self.full_weights['N'])
@@ -168,7 +169,7 @@ class MenakBert(LightningModule):
 
         N_classes = ["none", "rafa", "shva", "hataph segol",
                      "hataph patah", "hataph kamats",
-                     "hirik","chere", "segol", "phatah",
+                     "hirik", "chere", "segol", "phatah",
                      "kamats", "hulam", "kubuch", "shuruk"]
         S_classes = ["NONE", "mask", "sin", "shin"]
         D_classes = ["NONE", "RAFE", "DAGESH"]
@@ -233,3 +234,4 @@ if __name__ == "__main__":
     dm.setup()
 
     model = MenakBert()
+

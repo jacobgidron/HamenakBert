@@ -149,7 +149,8 @@ def runModel(cfg: DictConfig):
     base_path = cfg.base_path
     dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
 
-    testpath = [None, None, None, os.path.join(cfg.base_path,params['test_data'])]  # todo add test path on last element
+    testpath = [None, None, None,
+                os.path.join(cfg.base_path, params['test_data'])]  # todo add test path on last element
     # dirs = ['train', 'validation', 'test']
     data_modules = []
     for i, directory in enumerate(dirs):
@@ -174,6 +175,24 @@ def runModel(cfg: DictConfig):
             val_batch_size=params['val_batch_size'])
         dm.setup()
         data_modules.append(dm)
+        # weights for all 4 dm
+    all_weights = \
+        [
+            None,  # for religion
+            None,  # for pre_modern
+            # for early_modern
+            {'N': torch.tensor([2.4227e-01, 2.5790e-01, 9.7148e-02, 8.7762e-04, 1.2099e-02, 1.5516e-04,
+                                7.8204e-02, 2.8595e-02, 4.4660e-02, 7.7416e-02, 8.1133e-02, 4.8025e-02,
+                                7.1316e-04, 3.0812e-02], device=device),
+             'S': torch.tensor([9.6230e-01, 1.5810e-04, 3.4004e-02, 3.5340e-03], device=device),
+             'D': torch.tensor([0.3800, 0.5218, 0.0982], device=device)},
+            # for modern
+            {'N': torch.tensor([2.4920e-01, 2.6323e-01, 8.8410e-02, 1.0692e-03, 1.2552e-02, 1.4649e-04,
+                                7.2875e-02, 2.8470e-02, 4.6895e-02, 7.4532e-02, 8.5893e-02, 4.8047e-02,
+                                2.6159e-05, 2.8658e-02], device=device),
+             'S': torch.tensor([9.6249e-01, 3.2961e-04, 3.4374e-02, 2.8073e-03], device=device),
+             'D': torch.tensor([0.3914, 0.5126, 0.0961], device=device)}
+        ]
 
     for i, dm in enumerate(data_modules):
         if i == 0:
@@ -185,6 +204,12 @@ def runModel(cfg: DictConfig):
             warmup_steps = total_training_steps // 5
             model.n_warmup_steps = warmup_steps
             model.n_training_steps = total_training_steps
+            if (params['weighted_loss']) and (not (all_weights[i] is None)):
+                model.full_weights = all_weights[i]
+                model.weights = True
+            else:
+                model.weights = False
+
         trainer = setup_trainer(params['max_epochs'])
         trainer.fit(model, dm)
 
@@ -240,7 +265,7 @@ if __name__ == '__main__':
     # base_path = params['train_data']
     # dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
     # testpath = [None, None, None, params["test_data"]]
-    # # dirs = ['train', 'validation', 'test']
+    # # dirs = ['train', 'val', 'test']
     # data_modules = []
     # for i, directory in enumerate(dirs):
     #     # train_path = base_path + "/" + directory
@@ -271,7 +296,7 @@ if __name__ == '__main__':
     #     trainer = setup_trainer(params['max_epochs'])
     #     trainer.fit(model, dm)
     # trainer.test(model, data_modules[-1])
-
+    #
     # model, dm = setup_model( **params)
     # trainer = setup_trainer(params['max_epochs'])
     # # trainer.tune(model)
@@ -286,7 +311,7 @@ if __name__ == '__main__':
     #     writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
     #     writer.writerow(params)
     #
-
+    #
     # model, dm = setup_model(**params)
     # model, dm = setup_model(train_data=train_data,
     #                         val_data=val_data,
@@ -302,16 +327,34 @@ if __name__ == '__main__':
     #                         min_epochs=MIN_EPOCHS,
     #                         weighted_loss=True)
     # trainer = setup_trainer(MAX_EPOCHS)
-    # with cProfile.Profile() as pr:
-    #     trainer.fit(model, dm)
-    # stat = pstats.Stats(pr)
-    # stat.dump_stats(filename="run_time.prof")
+    # # with cProfile.Profile() as pr:
+    # #     trainer.fit(model, dm)
+    # # stat = pstats.Stats(pr)
+    # # stat.dump_stats(filename="run_time.prof")
     # trainer.test(model, dm)
-    # with open("result_tabel.csv", "a") as f:
-    #     # writer = csv.writer(f)
-    #     fin = params.copy()
-    #     fin["acc_S"] = model.final_acc_S.item()
-    #     fin["acc_D"] = model.final_acc_D.item()
-    #     fin["acc_N"] = model.final_acc_N.item()
-    #     writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
-    #     writer.writerow(fin)
+    # CSV_HEAD = [
+    #     "train_data",
+    #     "val_data",
+    #     "test_data",
+    #     "model",
+    #     "maxlen",
+    #     "minlen",
+    #     "lr",
+    #     "dropout",
+    #     "train_batch_size",
+    #     "val_batch_size",
+    #     "max_epochs",
+    #     "min_epochs",
+    #     "weighted_loss",
+    #     "acc_S",
+    #     "acc_D",
+    #     "acc_N",
+    # ]
+    # # with open("result_tabel.csv", "a") as f:
+    # #     # writer = csv.writer(f)
+    # #     fin = params.copy()
+    # #     fin["acc_S"] = model.final_acc_S.item()
+    # #     fin["acc_D"] = model.final_acc_D.item()
+    # #     fin["acc_N"] = model.final_acc_N.item()
+    # #     writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
+    # #     writer.writerow(fin)
