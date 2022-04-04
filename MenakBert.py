@@ -32,6 +32,10 @@ class MenakBert(LightningModule):
         self.linear_D = nn.Linear(768, DAGESH_SIZE)
         self.linear_S = nn.Linear(768, SIN_SIZE)
         self.linear_N = nn.Linear(768, NIQQUD_SIZE)
+        self.linear_up = nn.Linear(768, 1024)
+        self.linear_down = nn.Linear(1024, 768)
+        self.reluLayer= nn.Linear(1024, 768)
+
         self.dropout = nn.Dropout(dropout)
         self.lr = lr
         self.n_training_steps = n_training_steps
@@ -48,9 +52,13 @@ class MenakBert(LightningModule):
         """
 
         last_hidden_state = self.model(input_ids, attention_mask)['last_hidden_state']
-        n = self.linear_N(last_hidden_state)
-        d = self.linear_D(last_hidden_state)
-        s = self.linear_S(last_hidden_state)
+        large = self.linear_up(last_hidden_state)
+        drop = self.dropout(large)
+        active = self.reluLayer(drop)
+        small = self.linear_down(active)
+        n = self.linear_N(small)
+        d = self.linear_D(small)
+        s = self.linear_S(small)
         output = dict(N=n, D=d, S=s)
 
         loss = 0
