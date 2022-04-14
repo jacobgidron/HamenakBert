@@ -4,6 +4,7 @@ dataset:
   test_path: hebrew_diacritized/data/test
   max_len: 100
   min_len: 10
+  split_sentence: False
 
 model_name: menakbert_y1
 hyper_params:

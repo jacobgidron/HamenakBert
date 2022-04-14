@@ -11,8 +11,10 @@ CSV_HEAD = [
     "model",
     "maxlen",
     "minlen",
+    "split_by_sentence",
     "lr",
     "dropout",
+    "linear_layer_size",
     "train_batch_size",
     "val_batch_size",
     "max_epochs",
@@ -54,7 +56,8 @@ def create_slurm(cfg: DictConfig):
         f"hyper_params.dropout={cfg.hyper_params.dropout} hyper_params.max_epochs={cfg.hyper_params.max_epochs} "
         f"hyper_params.train_batch_size={cfg.hyper_params.train_batch_size} "
         f"hyper_params.linear_layer_size={cfg.hyper_params.linear_layer_size} "
-        f"hyper_params.weighted_loss={cfg.hyper_params.weighted_loss}")
+        f"hyper_params.weighted_loss={cfg.hyper_params.weighted_loss} "
+        f"dataset.split_sentence={cfg.dataset.split_sentence}")
     f.close()
     os.system("sbatch menakbert_job.slurm")
 

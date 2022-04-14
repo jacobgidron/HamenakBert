@@ -137,6 +137,7 @@ def runModel(cfg: DictConfig):
         "test_data": cfg.dataset.test_path,
         "maxlen": cfg.dataset.max_len,
         "minlen": cfg.dataset.min_len,
+        "split_sentence": cfg.dataset.split_sentence,
         "lr": cfg.hyper_params.lr,
         "dropout": cfg.hyper_params.dropout,
         "linear_layer_size": cfg.hyper_params.linear_layer_size,
@@ -174,7 +175,9 @@ def runModel(cfg: DictConfig):
             max_seq_length=params['maxlen'],
             min_seq_length=params['minlen'],
             train_batch_size=params['train_batch_size'],
-            val_batch_size=params['val_batch_size'])
+            val_batch_size=params['val_batch_size'],
+            split_sentence=params['split_sentence']
+        )
         dm.setup()
         data_modules.append(dm)
         # weights for all 4 dm
