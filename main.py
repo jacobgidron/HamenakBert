@@ -70,7 +70,7 @@ def calc_weights(train_data):
     return weights
 
 
-def setup_model(data_len, lr, dropout, train_batch_size, max_epochs, min_epochs, weights=None):
+def setup_model(data_len, lr, dropout, train_batch_size, max_epochs, min_epochs, linear_size, weights=None):
     # init data module
     if not os.path.exists(MODEL):
         os.mkdir(MODEL)
@@ -86,6 +86,7 @@ def setup_model(data_len, lr, dropout, train_batch_size, max_epochs, min_epochs,
                       dropout=dropout,
                       train_batch_size=train_batch_size,
                       lr=lr,
+                      linear_size=linear_size,
                       max_epochs=max_epochs,
                       min_epochs=min_epochs,
                       n_warmup_steps=warmup_steps,
@@ -138,6 +139,7 @@ def runModel(cfg: DictConfig):
         "minlen": cfg.dataset.min_len,
         "lr": cfg.hyper_params.lr,
         "dropout": cfg.hyper_params.dropout,
+        "linear_layer_size": cfg.hyper_params.linear_layer_size,
         "train_batch_size": cfg.hyper_params.train_batch_size,
         "val_batch_size": cfg.hyper_params.val_batch_size,
         "max_epochs": cfg.hyper_params.max_epochs,
@@ -197,7 +199,8 @@ def runModel(cfg: DictConfig):
     for i, dm in enumerate(data_modules):
         if i == 0:
             model = setup_model(len(dm.train_data), params['lr'], params['dropout'], params['train_batch_size'],
-                                params['max_epochs'], params['min_epochs'], weights=params['weighted_loss'])
+                                params['max_epochs'], params['min_epochs'], linear_size=params["linear_layer_size"],
+                                weights=params['weighted_loss'])
         else:
             steps_per_epoch = len(dm.train_data) // params['train_batch_size']
             total_training_steps = steps_per_epoch * params['max_epochs']

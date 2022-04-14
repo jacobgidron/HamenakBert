@@ -22,6 +22,7 @@ class MenakBert(LightningModule):
                  train_batch_size,
                  max_epochs,
                  min_epochs,
+                 linear_size,
                  weights=False,
                  n_training_steps=None,
                  n_warmup_steps=None,
@@ -32,9 +33,9 @@ class MenakBert(LightningModule):
         self.linear_D = nn.Linear(768, DAGESH_SIZE)
         self.linear_S = nn.Linear(768, SIN_SIZE)
         self.linear_N = nn.Linear(768, NIQQUD_SIZE)
-        self.linear_up = nn.Linear(768, 1024)
-        self.linear_down = nn.Linear(1024, 768)
-        self.reluLayer= nn.Linear(1024, 768)
+        self.linear_up = nn.Linear(768, linear_size)
+        self.linear_down = nn.Linear(linear_size, 768)
+        self.reluLayer = nn.ReLU()
 
         self.dropout = nn.Dropout(dropout)
         self.lr = lr
@@ -66,8 +67,8 @@ class MenakBert(LightningModule):
             if self.weights:
                 if not self.full_weights:
                     n_weights = torch.tensor([2.4920e-01, 2.6323e-01, 8.8410e-02, 1.0692e-03, 1.2552e-02, 1.4649e-04,
-                                    7.2875e-02, 2.8470e-02, 4.6895e-02, 7.4532e-02, 8.5893e-02, 4.8047e-02,
-                                    2.6159e-05, 2.8658e-02], device=self.device)
+                                              7.2875e-02, 2.8470e-02, 4.6895e-02, 7.4532e-02, 8.5893e-02, 4.8047e-02,
+                                              2.6159e-05, 2.8658e-02], device=self.device)
                     s_weights = torch.tensor([9.6249e-01, 3.2961e-04, 3.4374e-02, 2.8073e-03], device=self.device)
                     d_weights = torch.tensor([0.3914, 0.5126, 0.0961], device=self.device)
                     self.full_weights = {'N': n_weights, 'S': s_weights, 'D': d_weights}
@@ -242,4 +243,3 @@ if __name__ == "__main__":
     dm.setup()
 
     model = MenakBert()
-
