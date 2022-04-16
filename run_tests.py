@@ -11,7 +11,7 @@ CSV_HEAD = [
     "model",
     "maxlen",
     "minlen",
-    "split_by_sentence",
+    "split_sentence",
     "lr",
     "dropout",
     "linear_layer_size",
