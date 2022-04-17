@@ -232,7 +232,7 @@ def runModel(cfg: DictConfig):
 
     tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=True)
     compare_by_file_from_checkpoint(os.path.join(base_path, testpath[-1]), r"predicted", r"expected", tokenizer,
-                                    100, 5, trainer.checkpoint_callback.best_model_path)
+                                    100, 5, params["split_sentence"], trainer.checkpoint_callback.best_model_path)
     results = all_stats('predicted')
 
     with open(os.path.join(base_path, "result_tabel.csv"), "a") as f:
