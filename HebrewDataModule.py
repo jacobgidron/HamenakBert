@@ -16,7 +16,7 @@ class HebrewDataModule(LightningDataModule):
             min_seq_length: int,
             train_batch_size: int,
             val_batch_size: int,
-            split_sentence,
+            do_split_by_length = False,
             test_paths=None,
             **kwargs,
     ):
@@ -29,7 +29,7 @@ class HebrewDataModule(LightningDataModule):
         self.train_batch_size = train_batch_size
         self.min_seq_length = min_seq_length
         self.val_batch_size = val_batch_size
-        self.split_sentence = split_sentence
+        self.do_split_by_length = do_split_by_length
         self.tokenizer = AutoTokenizer.from_pretrained(self.model, use_fast=True)
 
     def setup(self, stage: str = None):
@@ -38,7 +38,7 @@ class HebrewDataModule(LightningDataModule):
             self.max_seq_length,
             self.min_seq_length,
             self.tokenizer,
-            self.split_sentence
+            self.do_split_by_length
         )
 
         self.val_data = textDataset(
@@ -46,7 +46,7 @@ class HebrewDataModule(LightningDataModule):
             self.max_seq_length,
             self.min_seq_length,
             self.tokenizer,
-            self.split_sentence
+            self.do_split_by_length
         )
 
         if self.test_paths[0]:
@@ -55,7 +55,7 @@ class HebrewDataModule(LightningDataModule):
                 self.max_seq_length,
                 self.min_seq_length,
                 self.tokenizer,
-                self.split_sentence
+                self.do_split_by_length
             )
 
     def train_dataloader(self):

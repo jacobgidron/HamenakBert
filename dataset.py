@@ -87,7 +87,7 @@ def merge(texts, tnss, nss, dss, sss):
 
 
 class textDataset(Dataset):
-    def __init__(self, base_paths, maxlen, minlen, tokenizer, split_sentence):
+    def __init__(self, base_paths, maxlen, minlen, tokenizer, do_split_by_length = None):
 
         def pad(ords, dtype='int32', value=PAD_INDEX):
             return utils.pad_sequences(ords, maxlen=maxlen, dtype=dtype, value=value)
@@ -97,14 +97,14 @@ class textDataset(Dataset):
         self.tokenizer = tokenizer
         self.maxlen = maxlen
         self.minlen = minlen
-        self.split_sentence = split_sentence
+        self.do_split_by_length = do_split_by_length
         self.counter = {'N': Counter([i for i in range(NIQQUD_SIZE)]),
                         'D': Counter([i for i in range(DAGESH_SIZE)]),
                         'S': Counter([i for i in range(SIN_SIZE)])}
 
         corpora = read_corpora(base_paths)
-        for (filename, heb_items) in corpora:
-            if self.split_sentence:
+        for (_, heb_items) in corpora:
+            if self.do_split_by_length:
                 text, normalized, dagesh, sin, niqqud = zip(
                     *(zip(*line) for line in pre_processing.split_by_length(heb_items, maxlen)))
             else:

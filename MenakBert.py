@@ -48,9 +48,18 @@ class MenakBert(LightningModule):
         self.weights = weights
         self.full_weights = None
 
+    def update_steps(self,data_len,train_batch_size):
+        steps_per_epoch = data_len // train_batch_size
+        total_training_steps = steps_per_epoch * self.max_epochs
+
+        self.n_training_steps = total_training_steps
+        self.n_warmup_steps   = total_training_steps // 5
+        self.train_batch_size = train_batch_size
+        
+
     def forward(self, input_ids, attention_mask, label=None):
         """
-        :return: tuple of 3 tensor batch,sentence_len,classes
+        :return: tuple of 3 tensor batch, sentence_len, classes
         """
 
         last_hidden_state = self.model(input_ids, attention_mask)['last_hidden_state']
