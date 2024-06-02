@@ -22,12 +22,14 @@ class MenakBert(LightningModule):
                  train_batch_size,
                  max_epochs,
                  min_epochs,
-                 linear_size,
+                 linear_size = 1024,
                  weights=False,
                  n_training_steps=None,
                  n_warmup_steps=None,
                  ):
         super().__init__()
+        import traceback
+        print(traceback.format_stack())
         self.model = AutoModel.from_pretrained(model)
         self.model.hidden_dropout_prob = dropout
         self.linear_D = nn.Linear(768, DAGESH_SIZE)

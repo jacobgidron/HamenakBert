@@ -124,132 +124,6 @@ def setup_trainer(max_epochs):
     return trainer
 
 
-# def runModel(cfg: DictConfig):
-#     os.environ['TOKENIZERS_PARALLELISM'] = 'true'
-#     global MODEL
-#     MODEL = os.path.join(f"{cfg.base_path}", "tavbert")
-#     print(OmegaConf.to_yaml(cfg))
-
-#     print(os.getcwd())
-#     # all model params from the CFG
-#     params = {
-#         "train_data": cfg.dataset.train_path,
-#         "val_data": cfg.dataset.val_path,
-#         "test_data": cfg.dataset.test_path,
-#         "maxlen": cfg.dataset.max_len,
-#         "minlen": cfg.dataset.min_len,
-#         "split_sentence": cfg.dataset.split_sentence,
-#         "lr": cfg.hyper_params.lr,
-#         "dropout": cfg.hyper_params.dropout,
-#         "linear_layer_size": cfg.hyper_params.linear_layer_size,
-#         "train_batch_size": cfg.hyper_params.train_batch_size,
-#         "val_batch_size": cfg.hyper_params.val_batch_size,
-#         "max_epochs": cfg.hyper_params.max_epochs,
-#         "min_epochs": cfg.hyper_params.min_epochs,
-#         "weighted_loss": cfg.hyper_params.weighted_loss,
-#         "path": os.getcwd(),
-#     }
-
-#     base_path = cfg.base_path
-#     dirs = ['religion', 'pre_modern', 'early_modern', 'modern']
-
-#     testpath = [None, None, None,
-#                 os.path.join(cfg.base_path, params['test_data'])]  # todo add test path on last element
-#     # dirs = ['train', 'validation', 'test']
-#     data_modules = []
-#     for i, directory in enumerate(dirs):
-#         train_path = os.path.join(params['train_data'], directory)
-#         # dm = setup_dm([train_path],
-#         #               [params['val_data']],
-#         #               testpath[i],
-#         #               MODEL,
-#         #               params['maxlen'],
-#         #               params['minlen'],
-#         #               params['train_batch_size'],
-#         #               params['val_batch_size']
-#         #               )
-#         dm = HebrewDataModule(
-#             train_paths=[os.path.join(base_path, train_path)],
-#             val_path=[os.path.join(base_path, params['val_data'])],
-#             test_paths=[testpath[i]],
-#             model=MODEL,
-#             max_seq_length=params['maxlen'],
-#             min_seq_length=params['minlen'],
-#             train_batch_size=params['train_batch_size'],
-#             val_batch_size=params['val_batch_size'],
-#             split_sentence=params['split_sentence']
-#         )
-#         dm.setup()
-#         data_modules.append(dm)
-#         # weights for all 4 dm
-#     all_weights = \
-#         [
-#             None,  # for religion
-#             None,  # for pre_modern
-#             # for early_modern
-#             {'N': torch.tensor([2.4227e-01, 2.5790e-01, 9.7148e-02, 8.7762e-04, 1.2099e-02, 1.5516e-04,
-#                                 7.8204e-02, 2.8595e-02, 4.4660e-02, 7.7416e-02, 8.1133e-02, 4.8025e-02,
-#                                 7.1316e-04, 3.0812e-02], device=device),
-#              'S': torch.tensor([9.6230e-01, 1.5810e-04, 3.4004e-02, 3.5340e-03], device=device),
-#              'D': torch.tensor([0.3800, 0.5218, 0.0982], device=device)},
-#             # for modern
-#             {'N': torch.tensor([2.4920e-01, 2.6323e-01, 8.8410e-02, 1.0692e-03, 1.2552e-02, 1.4649e-04,
-#                                 7.2875e-02, 2.8470e-02, 4.6895e-02, 7.4532e-02, 8.5893e-02, 4.8047e-02,
-#                                 2.6159e-05, 2.8658e-02], device=device),
-#              'S': torch.tensor([9.6249e-01, 3.2961e-04, 3.4374e-02, 2.8073e-03], device=device),
-#              'D': torch.tensor([0.3914, 0.5126, 0.0961], device=device)}
-#         ]
-
-#     for i, dm in enumerate(data_modules):
-#         if i == 0:
-#             model = setup_model(len(dm.train_data), params['lr'], params['dropout'], params['train_batch_size'],
-#                                 params['max_epochs'], params['min_epochs'], linear_size=params["linear_layer_size"],
-#                                 weights=params['weighted_loss'])
-#         else:
-#             steps_per_epoch = len(dm.train_data) // params['train_batch_size']
-#             total_training_steps = steps_per_epoch * params['max_epochs']
-#             warmup_steps = total_training_steps // 5
-#             model.n_warmup_steps = warmup_steps
-#             model.n_training_steps = total_training_steps
-#             if (params['weighted_loss']) and (not (all_weights[i] is None)):
-#                 model.full_weights = all_weights[i]
-#                 model.weights = True
-#             else:
-#                 model.weights = False
-
-#         trainer = setup_trainer(params['max_epochs'])
-#         trainer.fit(model, dm)
-
-#     trainer.test(model, data_modules[-1])
-
-#     with open(os.path.join(base_path, "result_tabel.csv"), "a") as f:
-#         # writer = csv.writer(f)
-#         fin = params.copy()
-#         fin["acc_S"] = model.final_acc_S.item()
-#         fin["acc_D"] = model.final_acc_D.item()
-#         fin["acc_N"] = model.final_acc_N.item()
-#         writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
-#         writer.writerow(fin)
-
-#     tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=True)
-#     compare_by_file_from_checkpoint(os.path.join(base_path, testpath[-1]), r"predicted", r"expected", tokenizer,
-#                                     100, 5, params["split_sentence"], trainer.checkpoint_callback.best_model_path)
-#     results = all_stats('predicted')
-
-#     with open(os.path.join(base_path, "result_tabel.csv"), "a") as f:
-#         # writer = csv.writer(f)
-#         fin = params.copy()
-#         fin["acc_S"] = model.final_acc_S.item()
-#         fin["acc_D"] = model.final_acc_D.item()
-#         fin["acc_N"] = model.final_acc_N.item()
-#         fin['dec'] = results['dec']
-#         fin['cha'] = results['cha']
-#         fin['wor'] = results['wor']
-#         fin['voc'] = results['voc']
-#         writer = csv.DictWriter(f, fieldnames=list(CSV_HEAD))
-#         writer.writerow(fin)
-
-
 if __name__ == '__main__':
     seed_everything(42, workers=True)
     # runModel()
@@ -266,7 +140,8 @@ if __name__ == '__main__':
         "val_batch_size": Val_BatchSize,
         "max_epochs": MAX_EPOCHS,
         "min_epochs": MIN_EPOCHS,
-        "weighted_loss": True
+        "weighted_loss": True,
+        "linear_size": 1024
     }
     
     base_path = params['train_data']
@@ -299,14 +174,11 @@ if __name__ == '__main__':
                           #   n_training_steps=total_training_steps,
                           weights=params['weighted_loss'])
     for i, dm in enumerate(data_modules):
-        if i == 0:
-            pass
-        else:
-            steps_per_epoch = len(dm.train_data) // params['train_batch_size']
-            total_training_steps = steps_per_epoch * params['max_epochs']
-            warmup_steps = total_training_steps // 5
-            model.n_warmup_steps = warmup_steps
-            model.n_training_steps = total_training_steps
+        steps_per_epoch = len(dm.train_data) // params['train_batch_size']
+        total_training_steps = steps_per_epoch * params['max_epochs']
+        warmup_steps = total_training_steps // 5
+        model.n_warmup_steps = warmup_steps
+        model.n_training_steps = total_training_steps
         trainer = setup_trainer(params['max_epochs'])
         trainer.fit(model, dm)
     trainer.test(model, data_modules[-1])

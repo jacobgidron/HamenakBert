@@ -1,0 +1,10 @@
+dropout: 0.1
+linear_size: 1024
+lr: 1.0e-05
+max_epochs: 100
+min_epochs: 5
+model: tau/tavbert-he
+n_training_steps: null
+n_warmup_steps: null
+train_batch_size: 32
+weights: true

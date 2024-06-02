@@ -5,18 +5,17 @@ import os
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
+from pathlib import Path
 
-
-def iterate_files(base_paths: Iterable[str]) -> List[str]:
-    for name in base_paths:
-        if not os.path.isdir(name):
-            yield name
-            continue
-        for root, dirs, files in os.walk(name):
-            for fname in files:
-                path = os.path.join(root, fname)
-                yield path
-
+def iterate_files(base_paths: Iterable[Path]) -> List[str]:
+# def iterate_files(base_paths):
+    while(base_paths):
+        for sub_path in base_paths.pop().iterdir():
+            print(sub_path)
+            if sub_path.is_dir():
+                base_paths.append(sub_path)
+            else:
+                yield sub_path
 
 def read_file(filename):
     with open(filename, 'r', encoding='utf-8') as f:
